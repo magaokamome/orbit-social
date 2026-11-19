@@ -260,7 +260,6 @@ let authUser=null;
 let realtimeChannel=null;
 let authListenerRegistered=false;
 let composeState=null;
-const trendSeed=[['テクノロジー','AIエージェント',''],['日本のトレンド','#個人開発',''],['エンタメ','新作ゲーム',''],['テクノロジー','生成AI',''],['暮らし','週末の過ごし方','']];
 const avatarColors=['#657786','#8b6bb1','#d97757','#397f9d','#8a9b61','#c17a9c','#647f9b','#ba8b3e','#5b978b'];
 function mapProfile(row){
  const name=row.display_name||row.username||'Orbit';
@@ -285,15 +284,16 @@ async function refreshAppData(){
  if(sessionResult.error)throw sessionResult.error;
  authUser=sessionResult.data.session?.user||null;
  const viewerId=authUser?.id||'demo-me';
- const [profilesR,postsR,followsR,likesR,repostsR,listsR]=await Promise.all([
+ const [profilesR,postsR,followsR,likesR,repostsR,listsR,trendsR]=await Promise.all([
   supabaseClient.from('profiles').select('*').order('created_at'),
   supabaseClient.from('posts').select('*').is('deleted_at',null).order('created_at',{ascending:false}).limit(200),
   supabaseClient.from('follows').select('follower_id,following_id'),
   supabaseClient.from('post_likes').select('user_id,post_id'),
   supabaseClient.from('reposts').select('user_id,post_id'),
-  supabaseClient.from('lists').select('*').order('created_at',{ascending:false})
+  supabaseClient.from('lists').select('*').order('created_at',{ascending:false}),
+  supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank')
  ]);
- for(const r of [profilesR,postsR,followsR,likesR,repostsR,listsR])if(r.error)throw r.error;
+ for(const r of [profilesR,postsR,followsR,likesR,repostsR,listsR,trendsR])if(r.error)throw r.error;
  const profiles=(profilesR.data||[]).map(mapProfile);
  const follows=followsR.data||[],likes=likesR.data||[],reposts=repostsR.data||[],postRows=postsR.data||[];
  const [bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR]=await Promise.all([
@@ -328,7 +328,7 @@ async function refreshAppData(){
   readNotifications:(notificationsR.data||[]).filter(n=>n.read_at).map(n=>n.id),
   messages,
   lists:(listsR.data||[]).map(l=>({id:l.id,name:l.name,description:l.description,members:(listMembersR.data||[]).filter(m=>m.list_id===l.id).map(m=>m.user_id),ownerId:l.owner_id,isPublic:l.is_public})),
-  trends:trendSeed,
+  trends:(trendsR.data||[]).map(t=>[t.category,t.keyword,Number(t.post_count||0).toLocaleString('ja-JP')+'件の投稿']),
   mutedUsers:(mutedR.data||[]).map(x=>x.muted_user_id),
   view:old.view||'home',timeline:old.timeline||'for-you',notifFilter:old.notifFilter||'all',profileTab:old.profileTab||'posts',
   searchFilter:old.searchFilter||'posts',searchTerm:old.searchTerm||'',
