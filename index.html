@@ -353,6 +353,11 @@ async function loadAppData(){
    .on('postgres_changes',{event:'*',schema:'public',table:'follows'},scheduleRefresh)
    .on('postgres_changes',{event:'*',schema:'public',table:'post_likes'},scheduleRefresh)
    .on('postgres_changes',{event:'*',schema:'public',table:'reposts'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'bookmarks'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'notifications'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'messages'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'lists'},scheduleRefresh)
    .subscribe();
  }
 }
