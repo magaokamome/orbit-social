@@ -5,6 +5,9 @@
 ## サイト
 - https://magaokamome.github.io/orbit-social/
 
+## 静的HTMLコンテンツ
+- [ai.html](https://magaokamome.github.io/orbit-social/ai.html): JavaScriptを使わずに、サービス概要・公開プロフィール・投稿・返信・トレンドを読めるHTMLページ。
+
 ## 機械可読データ
 - [data.json](https://magaokamome.github.io/orbit-social/data.json): ユーザー、投稿、通知、メッセージ、リスト、トレンドなどの公開サンプルデータ。
 - [sitemap.xml](https://magaokamome.github.io/orbit-social/sitemap.xml): クロール対象URL一覧。
