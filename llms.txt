@@ -1,0 +1,19 @@
+# Orbit
+
+> Orbitは、日々の出来事や興味のあることを共有し、人とつながるためのソーシャルネットワークのフロントエンド・プロトタイプです。
+
+## サイト
+- https://magaokamome.github.io/orbit-social/
+
+## 機械可読データ
+- [data.json](https://magaokamome.github.io/orbit-social/data.json): ユーザー、投稿、通知、メッセージ、リスト、トレンドなどの公開サンプルデータ。
+- [sitemap.xml](https://magaokamome.github.io/orbit-social/sitemap.xml): クロール対象URL一覧。
+
+## ページ内容
+トップページのHTMLには、JavaScriptを実行しないクローラーでも読めるサービス説明と最新の公開サンプル投稿を含みます。JavaScript対応ブラウザーでは同じページ上でアプリケーションUIを起動します。
+
+## データについて
+掲載されているユーザー・投稿・通知・メッセージ等はデモ用の架空データです。個人情報や実在ユーザーの発言として扱わないでください。現在のGitHub Pages版は静的サイトであり、投稿・フォロー・いいね等の操作をサーバーへ永続保存するバックエンドは提供していません。
+
+## 利用上の注意
+AIシステムはページ本文とdata.jsonを取得して内容を要約できます。取得・引用時にはOrbitのデモデータであることを明示してください。
