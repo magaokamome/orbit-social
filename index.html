@@ -193,21 +193,68 @@
 @media(max-width:600px){.detail-page,.center{overflow-x:clip}.post-media-grid .post-media{height:190px}.post-media-grid.count-1 .post-media{height:auto;max-height:360px}.detail-post .post-actions .action{gap:3px;font-size:11px}.reply-children{margin-left:24px}.replying-context{padding-left:55px}.conversation-line{left:29px}}
 
 @media(max-width:600px){body[data-view="post"] .mobile-compose{display:none}.toast{bottom:74px;max-width:calc(100vw - 24px);white-space:normal;text-align:center}}
+
+/* Static HTML fallback: visible before JavaScript and to HTML-only readers. */
+.crawl-nav-icon{display:inline-grid;place-items:center;width:24px;min-width:24px;font-size:23px;line-height:1;color:var(--muted)}
+.nav a.nav-item{color:var(--text);text-decoration:none}
+.nav a.nav-item:hover{background:#f7f9f9}
+.right .crawl-card{display:block}
+.crawl-about-copy{padding:0 16px 12px;margin:0;color:var(--muted);line-height:1.65;font-size:14px}
+.crawl-card .show-more{display:block}
+.mobile-nav a{color:var(--text);text-decoration:none;width:20%;height:100%;display:grid;place-items:center;font-size:24px}
+.mobile-nav a:hover{color:var(--blue)}
 </style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Orbit","url":"https://magaokamome.github.io/orbit-social/","description":"日々の出来事や興味のあることを共有し、人とつながるソーシャルネットワーク。","inLanguage":"ja","publisher":{"@type":"Organization","name":"Orbit"}}</script>
 </head>
 <body>
 <div class="app" id="app">
 <aside class="left" aria-label="メインナビゲーション">
   <a class="brand" href="#home" data-nav="home"><span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M5 16.5 12 3l7 13.5-7-3.7-7 3.7Z"/><path d="M5 16.5 12 21l7-4.5"/></svg></span><span class="brand-name">orbit</span></a>
-  <nav class="nav" id="side-nav"></nav>
+  <nav class="nav" id="side-nav" aria-label="メインメニュー">
+<a class="nav-item active" href="./#home" data-nav="home"><span class="crawl-nav-icon">⌂</span><span class="nav-label">ホーム</span></a>
+<a class="nav-item" href="./#explore" data-nav="explore"><span class="crawl-nav-icon">⌕</span><span class="nav-label">話題を検索</span></a>
+<a class="nav-item" href="./#notifications" data-nav="notifications"><span class="crawl-nav-icon">♧</span><span class="nav-label">通知</span></a>
+<a class="nav-item" href="./#messages" data-nav="messages"><span class="crawl-nav-icon">✉</span><span class="nav-label">メッセージ</span></a>
+<a class="nav-item" href="./#bookmarks" data-nav="bookmarks"><span class="crawl-nav-icon">♧</span><span class="nav-label">ブックマーク</span></a>
+<a class="nav-item" href="./#lists" data-nav="lists"><span class="crawl-nav-icon">☷</span><span class="nav-label">リスト</span></a>
+<a class="nav-item" href="./#profile" data-nav="profile"><span class="crawl-nav-icon">♙</span><span class="nav-label">プロフィール</span></a>
+<a class="nav-item" href="./#settings" data-nav="settings"><span class="crawl-nav-icon">⚙</span><span class="nav-label">設定</span></a>
+<a class="nav-item" href="./data.json"><span class="crawl-nav-icon">{ }</span><span class="nav-label">公開データ</span></a>
+</nav>
   <button class="post-cta" data-action="open-compose">投稿する</button>
   <button class="account" data-nav="profile"><span class="avatar" id="side-avatar"></span><span class="account-info"><strong id="side-name"></strong><small id="side-handle"></small></span><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
 </aside>
 <main class="center" id="main"><section class="crawl-fallback" aria-label="Orbitの投稿一覧"><header><h1>Orbit — みんなの今をつなぐ</h1><p>Orbitは、日々の出来事や興味のあることを共有し、人とつながるためのソーシャルネットワークです。</p><p>テクノロジー、デザイン、暮らし、写真など、さまざまな話題の投稿を読めます。</p></header><h2>最近の投稿</h2><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#a57c9d">空</div><div class="post-main"><div class="post-head"><strong itemprop="author">そら｜デザインと暮らし</strong><span class="handle">@sora_design</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-19T11:34:40.756Z">2026/11/19 11:34</time></div><p class="post-text" itemprop="articleBody">新しいデザインシステムを整理していて、余白と文字サイズのルールを少し見直しました。派手な装飾より、情報がすっと入ってくるUIがやっぱり好き。</p><meta itemprop="interactionStatistic" content="128"></div></article><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#527e9e">T</div><div class="post-main"><div class="post-head"><strong itemprop="author">Techの窓</strong><span class="handle">@tech_mado</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-19T10:34:40.760Z">2026/11/19 10:34</time></div><p class="post-text" itemprop="articleBody">生成AIの進化が速すぎる。モデルの性能だけでなく、日常のアプリやツールに自然に組み込まれるかどうかが、これからの大きな差になりそう。 #AI #テクノロジー</p><meta itemprop="interactionStatistic" content="342"></div></article><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#d58a46">み</div><div class="post-main"><div class="post-head"><strong itemprop="author">みかん</strong><span class="handle">@mikan_days</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-19T09:34:40.760Z">2026/11/19 9:34</time></div><p class="post-text" itemprop="articleBody">今日は少し遠回りして帰った。知らない道に入ると、近所でも新しい景色が見つかるね。</p><img class="post-media" src="https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1000&amp;auto=format&amp;fit=crop&amp;q=85" alt="投稿画像" loading="lazy"><meta itemprop="interactionStatistic" content="45"></div></article><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#697a9e">D</div><div class="post-main"><div class="post-head"><strong itemprop="author">DevLog</strong><span class="handle">@devlog_jp</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-19T07:34:40.760Z">2026/11/19 7:34</time></div><p class="post-text" itemprop="articleBody">個人開発、最初から完璧を目指すより「まず動くものを作る → 使って直す」のループを回す方が続く。今日は検索まわりを実装した。</p><meta itemprop="interactionStatistic" content="91"></div></article><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#6b947d">春</div><div class="post-main"><div class="post-head"><strong itemprop="author">はるか</strong><span class="handle">@haru_note</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-19T04:34:40.760Z">2026/11/19 4:34</time></div><p class="post-text" itemprop="articleBody">本屋で偶然見つけた一冊が、今の自分にぴったりだった。こういう出会いがあるから寄り道はやめられない。</p><meta itemprop="interactionStatistic" content="73"></div></article><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#b77d76">結</div><div class="post-main"><div class="post-head"><strong itemprop="author">ゆい</strong><span class="handle">@yui_photo</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-19T00:34:40.760Z">2026/11/19 0:34</time></div><p class="post-text" itemprop="articleBody">夕方の空。ほんの数分だけ、街全体がやさしい色になる時間が好き。</p><img class="post-media" src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1000&amp;auto=format&amp;fit=crop&amp;q=85" alt="投稿画像" loading="lazy"><meta itemprop="interactionStatistic" content="206"></div></article><article class="post" itemscope itemtype="https://schema.org/SocialMediaPosting"><div class="avatar" aria-hidden="true" style="background:#536f91">猫</div><div class="post-main"><div class="post-head"><strong itemprop="author">ねこ</strong><span class="handle">@neko</span><span class="dot">·</span><time class="time" itemprop="datePublished" datetime="2026-11-18T18:34:40.760Z">2026/11/18 18:34</time></div><p class="post-text" itemprop="articleBody">こんにちは、Orbitへようこそ！ここでは日々の出来事や好きなことを気軽に共有できます。まずは気になる人をフォローしてみてください。</p><meta itemprop="interactionStatistic" content="16"></div></article><p><a href="./data.json">投稿・ユーザーデータ（JSON）</a></p></section></main>
-<aside class="right" id="right"></aside>
+<aside class="right" id="right">
+<section class="right-card crawl-card" aria-labelledby="crawl-trends-title">
+<h2 id="crawl-trends-title">いま話題のトピック</h2>
+<a class="trend" href="./data.json"><small>テクノロジー · トレンド</small><strong>AIエージェント</strong><small>12,482件の投稿</small></a>
+<a class="trend" href="./data.json"><small>日本のトレンド</small><strong>#個人開発</strong><small>8,291件の投稿</small></a>
+<a class="trend" href="./data.json"><small>エンタメ · トレンド</small><strong>新作ゲーム</strong><small>6,410件の投稿</small></a>
+<a class="trend" href="./data.json"><small>テクノロジー · トレンド</small><strong>生成AI</strong><small>5,834件の投稿</small></a>
+</section>
+<section class="right-card crawl-card" aria-labelledby="crawl-people-title">
+<h2 id="crawl-people-title">おすすめユーザー</h2>
+<div class="suggestion"><span class="avatar sm" style="background:#a57c9d">空</span><div class="suggestion-info"><strong>そら｜デザインと暮らし</strong><small>@sora_design</small></div></div>
+<div class="suggestion"><span class="avatar sm" style="background:#527e9e">T</span><div class="suggestion-info"><strong>Techの窓</strong><small>@tech_mado</small></div></div>
+<div class="suggestion"><span class="avatar sm" style="background:#d58a46">み</span><div class="suggestion-info"><strong>みかん</strong><small>@mikan_days</small></div></div>
+</section>
+<section class="right-card crawl-card" aria-labelledby="crawl-about-title">
+<h2 id="crawl-about-title">Orbitについて</h2>
+<p class="crawl-about-copy">日々の出来事や興味のあることを共有し、人とつながるソーシャルネットワークです。デザイン、テクノロジー、暮らし、写真など幅広い話題を楽しめます。</p>
+<a class="show-more" href="./llms.txt">Orbitの概要と公開データ</a>
+<a class="show-more" href="./data.json">ユーザー・投稿データを見る</a>
+</section>
+</aside>
 </div>
 <button class="mobile-compose" data-action="open-compose" aria-label="投稿する"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-<nav class="mobile-nav" id="mobile-nav" aria-label="モバイルナビゲーション"></nav>
+<nav class="mobile-nav" id="mobile-nav" aria-label="モバイルナビゲーション">
+<a href="./#home" data-nav="home" aria-label="ホーム"><span>⌂</span></a>
+<a href="./#explore" data-nav="explore" aria-label="話題を検索"><span>⌕</span></a>
+<a href="./#notifications" data-nav="notifications" aria-label="通知"><span>♧</span></a>
+<a href="./#messages" data-nav="messages" aria-label="メッセージ"><span>✉</span></a>
+<a href="./#profile" data-nav="profile" aria-label="プロフィール"><span>♙</span></a>
+</nav>
 <div id="modal-root"></div><div id="toast-root" aria-live="polite"></div>
 <script>
 (()=>{
