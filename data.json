@@ -114,7 +114,16 @@
       "reposted": false,
       "bookmarked": false,
       "media": "",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "me",
+        "dev",
+        "mika"
+      ],
+      "repostsBy": [
+        "dev",
+        "sora"
+      ]
     },
     {
       "id": "p2",
@@ -129,7 +138,16 @@
       "reposted": false,
       "bookmarked": false,
       "media": "",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "sora",
+        "haru",
+        "yui"
+      ],
+      "repostsBy": [
+        "mika",
+        "yui"
+      ]
     },
     {
       "id": "p3",
@@ -144,7 +162,12 @@
       "reposted": false,
       "bookmarked": false,
       "media": "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?w=1000&auto=format&fit=crop&q=85",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "me",
+        "yui"
+      ],
+      "repostsBy": []
     },
     {
       "id": "p4",
@@ -159,7 +182,14 @@
       "reposted": false,
       "bookmarked": false,
       "media": "",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "sora",
+        "tech"
+      ],
+      "repostsBy": [
+        "haru"
+      ]
     },
     {
       "id": "p5",
@@ -174,7 +204,11 @@
       "reposted": false,
       "bookmarked": true,
       "media": "",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "mika"
+      ],
+      "repostsBy": []
     },
     {
       "id": "p6",
@@ -189,7 +223,14 @@
       "reposted": false,
       "bookmarked": false,
       "media": "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=1000&auto=format&fit=crop&q=85",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "me",
+        "dev"
+      ],
+      "repostsBy": [
+        "sora"
+      ]
     },
     {
       "id": "p7",
@@ -204,7 +245,14 @@
       "reposted": false,
       "bookmarked": false,
       "media": "",
-      "replyTo": null
+      "replyTo": null,
+      "likesBy": [
+        "sora",
+        "dev"
+      ],
+      "repostsBy": [
+        "haru"
+      ]
     },
     {
       "id": "r1",
@@ -218,7 +266,9 @@
       "liked": false,
       "reposted": false,
       "bookmarked": false,
-      "replyTo": "p1"
+      "replyTo": "p1",
+      "likesBy": [],
+      "repostsBy": []
     },
     {
       "id": "r2",
@@ -232,7 +282,9 @@
       "liked": false,
       "reposted": false,
       "bookmarked": false,
-      "replyTo": "r1"
+      "replyTo": "r1",
+      "likesBy": [],
+      "repostsBy": []
     },
     {
       "id": "r3",
@@ -246,7 +298,9 @@
       "liked": false,
       "reposted": false,
       "bookmarked": false,
-      "replyTo": "p7"
+      "replyTo": "p7",
+      "likesBy": [],
+      "repostsBy": []
     }
   ],
   "following": [
@@ -375,5 +429,47 @@
       "週末の過ごし方",
       "2,301件の投稿"
     ]
+  ],
+  "follows": [
+    {
+      "followerId": "me",
+      "followingId": "sora"
+    },
+    {
+      "followerId": "me",
+      "followingId": "tech"
+    },
+    {
+      "followerId": "me",
+      "followingId": "dev"
+    },
+    {
+      "followerId": "sora",
+      "followingId": "me"
+    },
+    {
+      "followerId": "sora",
+      "followingId": "tech"
+    },
+    {
+      "followerId": "dev",
+      "followingId": "me"
+    },
+    {
+      "followerId": "dev",
+      "followingId": "sora"
+    },
+    {
+      "followerId": "mika",
+      "followingId": "haru"
+    },
+    {
+      "followerId": "yui",
+      "followingId": "sora"
+    },
+    {
+      "followerId": "haru",
+      "followingId": "mika"
+    }
   ]
 }
