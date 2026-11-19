@@ -565,9 +565,9 @@ async function follow(id){
  }catch(error){toast(supaMessage(error))}
 }
 
-function doSearch(function doSearch(q){state.searchTerm=q||'';state.view='explore';state.searchFilter='posts';render();$('#search-input')?.focus()}
+function doSearch(q){state.searchTerm=q||'';state.view='explore';state.searchFilter='posts';render();$('#search-input')?.focus()}
 
-async async function makeConversation(id){
+async function makeConversation(id){
  if(!requireAuth()||!id||id===state.authProfileId)return;
  try{
   const mine=await supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',state.authProfileId);
