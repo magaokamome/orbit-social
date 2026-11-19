@@ -1,6 +1,6 @@
-# Orbit
+# Lime2
 
-> OrbitはTwitter風の操作感を持つSNS型Webアプリケーションです。
+> Lime2はTwitter風の操作感を持つSNS型Webアプリケーションです。
 
 ## サイト
 - https://magaokamome.github.io/orbit-social/
