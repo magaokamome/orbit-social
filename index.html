@@ -293,17 +293,113 @@ const icons={
 };
 const ico=name=>`<svg viewBox="0 0 24 24" aria-hidden="true">${icons[name]||icons.more}</svg>`;
 let state;
-async function loadAppData(){
- const response=await fetch(new URL('./data.json',document.baseURI),{cache:'no-store'});
- if(!response.ok)throw new Error('data.jsonの読み込みに失敗しました ('+response.status+')');
- const data=await response.json();
- if(!Array.isArray(data.users)||!Array.isArray(data.posts)||!Array.isArray(data.notifications))throw new Error('data.jsonの形式が正しくありません');
- state={...data,view:'home',timeline:'for-you',notifFilter:'all',profileTab:'posts',searchFilter:'posts',searchTerm:'',selectedChat:data.messages?.[0]?.id||'',readNotifications:[],draft:'',history:[],postId:null,hiddenTrends:[],scheduledPosts:[]};
- render();
-$('#main').removeAttribute('aria-busy');
+
+let state;
+let supabaseClient=null;
+let authUser=null;
+let realtimeChannel=null;
+let authListenerRegistered=false;
+let composeState=null;
+const trendSeed=[['テクノロジー','AIエージェント',''],['日本のトレンド','#個人開発',''],['エンタメ','新作ゲーム',''],['テクノロジー','生成AI',''],['暮らし','週末の過ごし方','']];
+const avatarColors=['#657786','#8b6bb1','#d97757','#397f9d','#8a9b61','#c17a9c','#647f9b','#ba8b3e','#5b978b'];
+function mapProfile(row){
+ const name=row.display_name||row.username||'Orbit';
+ const color=avatarColors[Math.abs(String(row.id).split('').reduce((a,c)=>a+c.charCodeAt(0),0))%avatarColors.length];
+ return {id:row.id,name,handle:row.username,bio:row.bio||'',location:row.location||'',website:row.website||'',joined:row.created_at?new Date(row.created_at).toLocaleDateString('ja-JP',{year:'numeric',month:'long'}):'',followers:row.followers_count||0,following:row.following_count||0,color,initial:name.slice(0,1),verified:!!row.is_verified,avatar_url:row.avatar_url||'',cover_url:row.cover_url||''};
 }
-const user=id=>state.users.find(u=>u.id===id)||state.users[0];
-const me=()=>user('me');
+function mapPost(row,profiles,likes,reposts,bookmarks,votes,viewerId){
+ const media=Array.isArray(row.media_urls)?row.media_urls:[];
+ const pv=votes.filter(v=>v.post_id===row.id);
+ const pollOptions=Array.isArray(row.poll_options)?row.poll_options:null;
+ const poll=pollOptions?{options:pollOptions,votes:pollOptions.map((_,i)=>pv.filter(v=>v.option_index===i).length),voted:pv.find(v=>v.user_id===viewerId)?.option_index??null,duration:row.poll_duration||'1日'}:null;
+ return {id:row.id,userId:row.author_id,text:row.body||'',createdAt:row.created_at,likes:row.likes_count||0,reposts:row.reposts_count||0,replies:row.replies_count||0,views:row.views_count||0,liked:likes.some(x=>x.post_id===row.id&&x.user_id===viewerId),reposted:reposts.some(x=>x.post_id===row.id&&x.user_id===viewerId),bookmarked:bookmarks.some(x=>x.post_id===row.id),media:media[0]||'',mediaItems:media,gif:row.gif_label||'',poll,warning:row.warning||'',location:row.location||'',replyPermission:row.reply_permission||'everyone',replyTo:row.reply_to||null,likesBy:likes.filter(x=>x.post_id===row.id).map(x=>x.user_id),repostsBy:reposts.filter(x=>x.post_id===row.id).map(x=>x.user_id)};
+}
+function supaMessage(error){
+ if(!error)return '';
+ if(error.code==='23505')return 'すでに登録されています。';
+ if(error.code==='42501'||error.code==='PGRST301')return 'この操作を行う権限がありません。ログイン状態を確認してください。';
+ return error.message||'Supabaseの処理に失敗しました。';
+}
+async function refreshAppData(){
+ const sessionResult=await supabaseClient.auth.getSession();
+ if(sessionResult.error)throw sessionResult.error;
+ authUser=sessionResult.data.session?.user||null;
+ const viewerId=authUser?.id||'demo-me';
+ const [profilesR,postsR,followsR,likesR,repostsR,listsR]=await Promise.all([
+  supabaseClient.from('profiles').select('*').order('created_at'),
+  supabaseClient.from('posts').select('*').is('deleted_at',null).order('created_at',{ascending:false}).limit(200),
+  supabaseClient.from('follows').select('follower_id,following_id'),
+  supabaseClient.from('post_likes').select('user_id,post_id'),
+  supabaseClient.from('reposts').select('user_id,post_id'),
+  supabaseClient.from('lists').select('*').order('created_at',{ascending:false})
+ ]);
+ for(const r of [profilesR,postsR,followsR,likesR,repostsR,listsR])if(r.error)throw r.error;
+ const profiles=(profilesR.data||[]).map(mapProfile);
+ const follows=followsR.data||[],likes=likesR.data||[],reposts=repostsR.data||[],postRows=postsR.data||[];
+ const [bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR]=await Promise.all([
+  authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId):Promise.resolve({data:[],error:null}),
+  authUser?supabaseClient.from('notifications').select('*').order('created_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null}),
+  (listsR.data||[]).length?supabaseClient.from('list_members').select('list_id,user_id').in('list_id',(listsR.data||[]).map(x=>x.id)):Promise.resolve({data:[],error:null}),
+  postRows.some(p=>Array.isArray(p.poll_options)&&p.poll_options.length)?supabaseClient.from('poll_votes').select('post_id,user_id,option_index'):Promise.resolve({data:[],error:null}),
+  authUser?supabaseClient.from('muted_users').select('muted_user_id').eq('user_id',viewerId):Promise.resolve({data:[],error:null}),
+  authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId):Promise.resolve({data:[],error:null})
+ ]);
+ for(const r of [bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR])if(r.error)throw r.error;
+ const conversationIds=[...new Set((membershipsR.data||[]).map(x=>x.conversation_id))];
+ let messages=[];
+ if(conversationIds.length){
+  const [membersR,messagesR]=await Promise.all([
+   supabaseClient.from('conversation_members').select('conversation_id,user_id').in('conversation_id',conversationIds),
+   supabaseClient.from('messages').select('*').in('conversation_id',conversationIds).order('created_at')
+  ]);
+  if(membersR.error)throw membersR.error;
+  if(messagesR.error)throw messagesR.error;
+  const grouped={};
+  for(const m of messagesR.data||[]){(grouped[m.conversation_id]??=[]).push({from:m.sender_id===viewerId?'me':m.sender_id,text:m.body,at:m.created_at,id:m.id})}
+  messages=conversationIds.map(cid=>{const member=(membersR.data||[]).find(x=>x.conversation_id===cid&&x.user_id!==viewerId);return member?{id:cid,userId:member.user_id,messages:grouped[cid]||[]}:null}).filter(Boolean);
+ }
+ const old=state||{};
+ state={
+  users:profiles,
+  posts:postRows.map(p=>mapPost(p,profiles,likes,reposts,bookmarksR.data||[],pollVotesR.data||[],viewerId)),
+  following:follows.filter(f=>f.follower_id===viewerId).map(f=>f.following_id),
+  followRecords:follows,
+  notifications:(notificationsR.data||[]).map(n=>({id:n.id,type:n.type,from:n.actor_id||'demo-me',text:n.body,at:n.created_at,postId:n.post_id,detail:'',read:!!n.read_at})),
+  readNotifications:(notificationsR.data||[]).filter(n=>n.read_at).map(n=>n.id),
+  messages,
+  lists:(listsR.data||[]).map(l=>({id:l.id,name:l.name,description:l.description,members:(listMembersR.data||[]).filter(m=>m.list_id===l.id).map(m=>m.user_id),ownerId:l.owner_id,isPublic:l.is_public})),
+  trends:trendSeed,
+  mutedUsers:(mutedR.data||[]).map(x=>x.muted_user_id),
+  view:old.view||'home',timeline:old.timeline||'for-you',notifFilter:old.notifFilter||'all',profileTab:old.profileTab||'posts',
+  searchFilter:old.searchFilter||'posts',searchTerm:old.searchTerm||'',
+  selectedChat:old.selectedChat||messages[0]?.id||'',draft:'',history:old.history||[],
+  profileId:old.profileId||null,postId:old.postId||null,hiddenTrends:[],
+  authUser,authProfileId:authUser?.id||null
+ };
+ render();
+ $('#main').removeAttribute('aria-busy');
+}
+async function loadAppData(){
+ if(!window.supabase?.createClient)throw new Error('Supabaseライブラリを読み込めませんでした。');
+ if(!supabaseClient)supabaseClient=window.supabase.createClient('https://rwcsylijgplezbtpuicn.supabase.co','sb_publishable_IlmiyXzRFEq66c8kifAESg_nphbhmYE',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ await refreshAppData();
+ if(!authListenerRegistered){
+  authListenerRegistered=true;
+  supabaseClient.auth.onAuthStateChange((_event,session)=>{authUser=session?.user||null;setTimeout(()=>refreshAppData().catch(error=>{console.error(error);toast(supaMessage(error))}),0)});
+ }
+ if(!realtimeChannel){
+  realtimeChannel=supabaseClient.channel('orbit-live')
+   .on('postgres_changes',{event:'*',schema:'public',table:'posts'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'follows'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'post_likes'},scheduleRefresh)
+   .on('postgres_changes',{event:'*',schema:'public',table:'reposts'},scheduleRefresh)
+   .subscribe();
+ }
+}
+let refreshTimer=null;
+function scheduleRefresh(){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>refreshAppData().catch(console.error),500)}
+const user=id=>state.users.find(u=>u.id===id)||state.users[0]||{id:'',name:'Orbit',handle:'orbit',bio:'',color:'#8298aa',initial:'O',followers:0,following:0};
+const me=()=>user(state?.authProfileId||'demo-me');
 const isFollowing=id=>state.following.includes(id);
 const save=()=>{};
 const short=n=>n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=10000?(n/10000).toFixed(1).replace(/\.0$/,'')+'万':n>=1000?(n/1000).toFixed(1).replace(/\.0$/,'')+'K':String(n||0);
@@ -311,7 +407,7 @@ const timeAgo=v=>{const d=Math.max(0,Math.floor((Date.now()-new Date(v).getTime(
 const fullDate=v=>new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(v));
 const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const rich=s=>esc(s).replace(/(#[\p{L}\p{N}_]+)/gu,'<span class="tag">$1</span>').replace(/(https?:\/\/[^\s]+)/g,'<span class="tag">$1</span>').replace(/(@[a-zA-Z0-9_]+)/g,'<span class="tag">$1</span>');
-const avatar=(u,size='')=>`<span class="avatar ${size}" style="background:${esc(u.color)}">${esc(u.initial)}</span>`;
+const avatar=(u,size='')=>`<span class="avatar ${size}" style="background:${esc(u.color||'#8298aa')}">${u.avatar_url?`<img src="${esc(u.avatar_url)}" alt="">`:esc(u.initial||u.name?.slice(0,1)||'?')}</span>`;
 const navItems=[['home','ホーム','home'],['explore','話題を検索','search'],['notifications','通知','bell'],['messages','メッセージ','mail'],['bookmarks','ブックマーク','bookmark'],['lists','リスト','list'],['profile','プロフィール','user'],['settings','設定','settings']];
 let composeState=null;
 function toast(message){const root=$('#toast-root');root.innerHTML=`<div class="toast" role="status">${esc(message)}</div>`;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>root.innerHTML='',2400)}
