@@ -1,17 +1,17 @@
 # Orbit
 
-> Orbitは、Twitterに似た操作感で投稿・返信・フォロー・通知・メッセージを利用できるSNS型Webアプリです。
+> OrbitはTwitter風の操作感を持つSNS型Webアプリケーションです。
 
 ## サイト
 - https://magaokamome.github.io/orbit-social/
 
-## データ管理
-アプリケーションのプロフィール、投稿、返信、フォロー、リアクション、ブックマーク、通知、メッセージ、リスト等はSupabase PostgreSQLに保存されます。静的JSONファイルをデータベースとして利用していません。
+## データ構成
+プロフィール、投稿、返信、フォロー、いいね、リポスト、ブックマーク、通知、DM、リスト、通報、ミュート、投票はSupabase PostgreSQLに保存します。ブラウザ内のJSONファイルやlocalStorageをデータの正本として使用しません。
 
 ## 技術構成
 - フロントエンド: GitHub Pages（静的HTML/CSS/JavaScript）
-- データベース・認証・リアルタイム更新: Supabase
-- 画像アップロード・画像ストレージ: 現在は利用しません
+- DB・認証・リアルタイム: Supabase
+- 画像ファイルのアップロード・保存: 無効
+- APIクライアント: Supabase JavaScript SDK（publishable key）
 
-## デモデータ
-初期表示には架空のプロフィール・投稿データが含まれます。実在ユーザーの情報ではありません。
+初期プロフィールと投稿には架空のデモデータを含みます。
