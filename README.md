@@ -1,4 +1,4 @@
-# Orbit
+# Lime2
 
 Twitter風の操作感を持つSNS型Webアプリケーションです。
 
