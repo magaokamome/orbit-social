@@ -33,6 +33,7 @@ https://magaokamome.github.io/orbit-social/
 - `conversations`, `conversation_members`, `messages`: DM
 - `lists`, `list_members`: リスト
 - `muted_users`, `reports`, `poll_votes`: ミュート、通報、投票
+- `trends`: トレンド一覧
 
 公開スキーマのテーブルはRLSを有効にし、公開閲覧と本人操作をポリシーで分離しています。Auth登録時はDBトリガーでプロフィールを作成します。いいね、リポスト、フォロー、返信、DMの通知もDBトリガーで作成します。
 
