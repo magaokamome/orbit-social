@@ -1,22 +1,17 @@
 # Orbit
 
-> Orbitは、日々の出来事や興味のあることを共有し、人とつながるためのソーシャルネットワークのフロントエンド・プロトタイプです。
+> Orbitは、Twitterに似た操作感で投稿・返信・フォロー・通知・メッセージを利用できるSNS型Webアプリです。
 
 ## サイト
 - https://magaokamome.github.io/orbit-social/
 
-## 静的HTMLコンテンツ
-- [ai.html](https://magaokamome.github.io/orbit-social/ai.html): JavaScriptを使わずに、サービス概要・公開プロフィール・投稿・返信・トレンドを読めるHTMLページ。
+## データ管理
+アプリケーションのプロフィール、投稿、返信、フォロー、リアクション、ブックマーク、通知、メッセージ、リスト等はSupabase PostgreSQLに保存されます。静的JSONファイルをデータベースとして利用していません。
 
-## 機械可読データ
-- [data.json](https://magaokamome.github.io/orbit-social/data.json): ユーザー、投稿、通知、メッセージ、リスト、トレンドなどの公開サンプルデータ。
-- [sitemap.xml](https://magaokamome.github.io/orbit-social/sitemap.xml): クロール対象URL一覧。
+## 技術構成
+- フロントエンド: GitHub Pages（静的HTML/CSS/JavaScript）
+- データベース・認証・リアルタイム更新: Supabase
+- 画像アップロード・画像ストレージ: 現在は利用しません
 
-## ページ内容
-トップページのHTMLには、JavaScriptを実行しないクローラーでも読めるサービス説明と最新の公開サンプル投稿を含みます。JavaScript対応ブラウザーでは同じページ上でアプリケーションUIを起動します。
-
-## データについて
-掲載されているユーザー・投稿・通知・メッセージ等はデモ用の架空データです。個人情報や実在ユーザーの発言として扱わないでください。現在のGitHub Pages版は静的サイトであり、投稿・フォロー・いいね等の操作をサーバーへ永続保存するバックエンドは提供していません。
-
-## 利用上の注意
-AIシステムはページ本文とdata.jsonを取得して内容を要約できます。取得・引用時にはOrbitのデモデータであることを明示してください。
+## デモデータ
+初期表示には架空のプロフィール・投稿データが含まれます。実在ユーザーの情報ではありません。
