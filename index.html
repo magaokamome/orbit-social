@@ -614,9 +614,24 @@ async function addPost(text,replyTo=null,extras={}){
  const clean=(text||'').trim();
  if(!clean&&!extras.gif&&!extras.poll){toast('ポスト本文を入力してください');return false}
  try{
+  if(replyTo){
+   const parent=state.posts.find(p=>p.id===replyTo);
+   if(parent&&parent.userId!==state.authProfileId){
+    if(parent.replyPermission==='following'){
+     const followResult=await supabaseClient.from('follows').select('follower_id').eq('follower_id',parent.userId).eq('following_id',state.authProfileId).limit(1);
+     if(followResult.error)throw followResult.error;
+     if(!(followResult.data||[]).length){toast('このポストは投稿者がフォローしているアカウントのみ返信できます。');return false}
+    }else if(parent.replyPermission==='mentioned'&&!((parent.text||'').toLowerCase().includes('@'+me().handle.toLowerCase()))){
+     toast('このポストはメンションされたアカウントのみ返信できます。');return false;
+    }
+   }
+  }
   const payload={author_id:state.authProfileId,body:clean,reply_to:replyTo||null,media_urls:[],gif_label:extras.gif||null,poll_options:extras.poll?.length?extras.poll:null,poll_duration:extras.poll?.length?(extras.pollDuration||'1日'):null,warning:extras.warning||null,location:extras.location||null,reply_permission:extras.permission||'everyone',scheduled_at:extras.schedule?new Date(extras.schedule).toISOString():null};
   const result=await supabaseClient.from('posts').insert(payload).select().single();
-  if(result.error)throw result.error;
+  if(result.error){
+   if(replyTo&&result.error.code==='42501'){toast('このポストは返信できるアカウントが制限されています。');return false}
+   throw result.error;
+  }
   state.draft='';await refreshAppData();
   if(replyTo){state.view='post';state.postId=replyTo}else{state.view='home';state.timeline='for-you'}
   closeModal();render();window.scrollTo(0,0);
