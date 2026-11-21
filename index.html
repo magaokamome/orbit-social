@@ -640,7 +640,7 @@ async function addPost(text,replyTo=null,extras={}){
 }
 function openPostMenu(id){
  const p=state.posts.find(x=>x.id===id);if(!p)return;
- const own=p.userId===me().id;
+ const own=!!state.authUser&&p.userId===state.authProfileId;
  openModal(`<div class="post-menu-list"><button data-action="close-modal" class="menu-close">${ico('close')}<span>閉じる</span></button><button data-action="share" data-id="${esc(id)}">${ico('share')}<span>ポストを共有</span></button>${own?`<button data-action="edit-post" data-id="${esc(id)}">${ico('settings')}<span>ポストを編集</span></button><button class="danger" data-action="delete-post" data-id="${esc(id)}">${ico('close')}<span>ポストを削除</span></button>`:`<button data-action="report-post" data-id="${esc(id)}">${ico('warning')}<span>ポストを報告</span></button><button data-action="mute-user" data-id="${esc(p.userId)}">${ico('bell')}<span>@${esc(user(p.userId).handle)}をミュート</span></button>`}</div>`,{className:'menu-modal',label:'ポストメニュー'});
 }
 function editPost(id){
