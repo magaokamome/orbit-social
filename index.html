@@ -668,7 +668,17 @@ async function sendMessage(text){
 }
 
 function createList(){openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>新しいリスト</h2></div><div class="form-modal-body"><label class="field"><span>リスト名</span><input id="list-name" maxlength="40" placeholder="例：デザイン関連"></label><label class="field"><span>説明</span><textarea id="list-description" maxlength="160" placeholder="このリストについて"></textarea></label><button class="primary" data-action="save-list">作成する</button></div>`,{label:'新しいリスト'})}
-function openList(id){const l=state.lists.find(x=>x.id===id);if(!l)return;openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>${esc(l.name)}</h2></div><div class="page-intro"><p>${esc(l.description)}</p></div>${l.members.map(uid=>{const u=user(uid);return `<div class="suggestion">${avatar(u,'sm')}<div class="suggestion-info"><strong>${esc(u.name)}</strong><small>@${esc(u.handle)}</small></div><button class="follow-btn following" data-action="remove-list-member" data-list="${esc(id)}" data-id="${esc(uid)}">削除</button></div>`}).join('')}<div class="form-modal-body"><select id="list-member">${state.users.filter(u=>u.id!==me().id&&!l.members.includes(u.id)).map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join('')}</select><button class="primary" data-action="add-list-member" data-id="${esc(id)}">メンバーを追加</button></div>`,{label:l.name})}
+function openList(id){
+ const l=state.lists.find(x=>x.id===id);if(!l)return;
+ const canManage=!!state.authUser&&l.ownerId===state.authProfileId;
+ openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>${esc(l.name)}</h2>${canManage?`<span class="compose-spacer"></span><button class="icon-btn" data-action="edit-list" data-id="${esc(id)}" aria-label="リストを編集">${ico('settings')}</button><button class="icon-btn danger" data-action="delete-list" data-id="${esc(id)}" aria-label="リストを削除">${ico('close')}</button>`:''}</div><div class="page-intro"><p>${esc(l.description)}</p></div>${l.members.map(uid=>{const u=user(uid);return `<div class="suggestion">${avatar(u,'sm')}<div class="suggestion-info"><strong>${esc(u.name)}</strong><small>@${esc(u.handle)}</small></div>${canManage?`<button class="follow-btn following" data-action="remove-list-member" data-list="${esc(id)}" data-id="${esc(uid)}">削除</button>`:''}</div>`}).join('')}${canManage?`<div class="form-modal-body"><select id="list-member">${state.users.filter(u=>u.id!==me().id&&!l.members.includes(u.id)).map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join('')}</select><button class="primary" data-action="add-list-member" data-id="${esc(id)}">メンバーを追加</button></div>`:''}`,{label:l.name});
+}
+function editList(id){
+ if(!requireAuth())return;
+ const l=state.lists.find(x=>x.id===id);
+ if(!l||l.ownerId!==state.authProfileId){toast('このリストを編集する権限がありません。');return}
+ openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>リストを編集</h2></div><div class="form-modal-body"><label class="field"><span>リスト名</span><input id="edit-list-name" maxlength="40" value="${esc(l.name)}"></label><label class="field"><span>説明</span><textarea id="edit-list-description" maxlength="160">${esc(l.description)}</textarea></label><button class="primary" data-action="save-list-edit" data-id="${esc(id)}">保存</button></div>`,{label:'リストを編集'});
+}
 function editProfile(){if(!requireAuth())return;const u=me();openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>プロフィールを編集</h2><span class="compose-spacer"></span><button class="primary" data-action="save-profile">保存</button></div><div class="form-modal-body"><label class="field"><span>表示名</span><input id="edit-name" maxlength="50" value="${esc(u.name)}"></label><label class="field"><span>ユーザー名</span><input id="edit-handle" maxlength="15" value="${esc(u.handle)}"></label><label class="field"><span>自己紹介</span><textarea id="edit-bio" maxlength="160">${esc(u.bio)}</textarea></label><label class="field"><span>場所</span><input id="edit-location" maxlength="40" value="${esc(u.location)}"></label><label class="field"><span>ウェブサイト</span><input id="edit-website" maxlength="100" value="${esc(u.website)}"></label></div>`,{label:'プロフィールを編集'})}
 async function action(el,event){
  const a=el.dataset.action,id=el.dataset.id,val=el.dataset.value;
@@ -766,6 +776,26 @@ async function action(el,event){
   closeModal();await refreshAppData();toast('リストを作成しました');break;
  }
  case'open-list':openList(id);break;
+  case'edit-list':editList(id);break;
+  case'delete-list':{
+   if(!requireAuth())break;
+   const list=state.lists.find(x=>x.id===id);
+   if(!list||list.ownerId!==state.authProfileId){toast('このリストを削除する権限がありません。');break}
+   if(!confirm('このリストを削除しますか？'))break;
+   const result=await supabaseClient.from('lists').delete().eq('id',id).eq('owner_id',state.authProfileId);
+   if(result.error){toast(supaMessage(result.error));break}
+   closeModal();await refreshAppData();toast('リストを削除しました');break;
+  }
+  case'save-list-edit':{
+   if(!requireAuth())break;
+   const list=state.lists.find(x=>x.id===id);
+   if(!list||list.ownerId!==state.authProfileId){toast('このリストを編集する権限がありません。');break}
+   const name=$('#edit-list-name')?.value.trim();
+   if(!name){toast('リスト名を入力してください');break}
+   const result=await supabaseClient.from('lists').update({name,description:$('#edit-list-description')?.value||'',updated_at:new Date().toISOString()}).eq('id',id).eq('owner_id',state.authProfileId).select('id').single();
+   if(result.error){toast(supaMessage(result.error));break}
+   closeModal();await refreshAppData();toast('リストを更新しました');break;
+  }
  case'add-list-member':{
   if(!requireAuth())break;
   const member=$('#list-member')?.value;if(!member)break;
