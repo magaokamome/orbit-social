@@ -273,7 +273,7 @@ function mapPost(row,profiles,likes,reposts,bookmarks,votes,viewerId){
  const pv=votes.filter(v=>v.post_id===row.id);
  const pollOptions=Array.isArray(row.poll_options)?row.poll_options:null;
  const poll=pollOptions?{options:pollOptions,votes:pollOptions.map((_,i)=>pv.filter(v=>v.option_index===i).length),voted:pv.find(v=>v.user_id===viewerId)?.option_index??null,duration:row.poll_duration||'1日'}:null;
- return {id:row.id,userId:row.author_id,text:row.body||'',createdAt:row.created_at,likes:row.likes_count||0,reposts:row.reposts_count||0,replies:row.replies_count||0,views:row.views_count||0,liked:likes.some(x=>x.post_id===row.id&&x.user_id===viewerId),reposted:reposts.some(x=>x.post_id===row.id&&x.user_id===viewerId),bookmarked:bookmarks.some(x=>x.post_id===row.id),media:media[0]||'',mediaItems:media,gif:row.gif_label||'',poll,warning:row.warning||'',location:row.location||'',replyPermission:row.reply_permission||'everyone',replyTo:row.reply_to||null,likesBy:likes.filter(x=>x.post_id===row.id).map(x=>x.user_id),repostsBy:reposts.filter(x=>x.post_id===row.id).map(x=>x.user_id)};
+ return {id:row.id,userId:row.author_id,text:row.body||'',createdAt:row.created_at,likes:row.likes_count||0,reposts:row.reposts_count||0,replies:row.replies_count||0,views:row.views_count||0,liked:likes.some(x=>x.post_id===row.id&&x.user_id===viewerId),reposted:reposts.some(x=>x.post_id===row.id&&x.user_id===viewerId),bookmarked:bookmarks.some(x=>x.post_id===row.id),media:media[0]||'',mediaItems:media,gif:row.gif_label||'',poll,warning:row.warning||'',location:row.location||'',replyPermission:row.reply_permission||'everyone',replyTo:row.reply_to||null};
 }
 function supaMessage(error){
  if(!error)return '';
@@ -287,24 +287,25 @@ async function refreshAppData(){
  authUser=sessionResult.data.session?.user||null;
  const viewerId=authUser?.id||'demo-me';
  const [profilesR,postsR,followsR,likesR,repostsR,listsR,trendsR]=await Promise.all([
-  supabaseClient.from('profiles').select('*').order('created_at'),
-  supabaseClient.from('posts').select('*').is('deleted_at',null).order('created_at',{ascending:false}).limit(200),
-  supabaseClient.from('follows').select('follower_id,following_id'),
-  supabaseClient.from('post_likes').select('user_id,post_id'),
-  supabaseClient.from('reposts').select('user_id,post_id'),
-  supabaseClient.from('lists').select('*').order('created_at',{ascending:false}),
-  supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank')
+  supabaseClient.from('profiles').select('id,username,display_name,bio,location,website,created_at,followers_count,following_count,is_verified,avatar_url,cover_url').order('created_at').limit(1000),
+  supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).order('created_at',{ascending:false}).limit(200),
+  supabaseClient.from('follows').select('follower_id,following_id').eq('follower_id',viewerId).limit(2000),
+  supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).limit(500),
+  supabaseClient.from('reposts').select('user_id,post_id').eq('user_id',viewerId).limit(500),
+  supabaseClient.from('lists').select('id,owner_id,name,description,is_public,created_at').order('created_at',{ascending:false}).limit(100),
+  supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank').limit(50)
  ]);
  for(const r of [profilesR,postsR,followsR,likesR,repostsR,listsR,trendsR])if(r.error)throw r.error;
  const profiles=(profilesR.data||[]).map(mapProfile);
  const follows=followsR.data||[],likes=likesR.data||[],reposts=repostsR.data||[],postRows=postsR.data||[];
+ const pollPostIds=postRows.filter(p=>Array.isArray(p.poll_options)&&p.poll_options.length).map(p=>p.id);
  const [bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR]=await Promise.all([
-  authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId):Promise.resolve({data:[],error:null}),
-  authUser?supabaseClient.from('notifications').select('*').order('created_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null}),
-  (listsR.data||[]).length?supabaseClient.from('list_members').select('list_id,user_id').in('list_id',(listsR.data||[]).map(x=>x.id)):Promise.resolve({data:[],error:null}),
-  postRows.some(p=>Array.isArray(p.poll_options)&&p.poll_options.length)?supabaseClient.from('poll_votes').select('post_id,user_id,option_index'):Promise.resolve({data:[],error:null}),
-  authUser?supabaseClient.from('muted_users').select('muted_user_id').eq('user_id',viewerId):Promise.resolve({data:[],error:null}),
-  authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId):Promise.resolve({data:[],error:null})
+  authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId).limit(500):Promise.resolve({data:[],error:null}),
+  authUser?supabaseClient.from('notifications').select('id,actor_id,type,body,created_at,post_id,read_at').order('created_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null}),
+  (listsR.data||[]).length?supabaseClient.from('list_members').select('list_id,user_id').in('list_id',(listsR.data||[]).map(x=>x.id)).limit(1000):Promise.resolve({data:[],error:null}),
+  pollPostIds.length?supabaseClient.from('poll_votes').select('post_id,user_id,option_index').in('post_id',pollPostIds).limit(5000):Promise.resolve({data:[],error:null}),
+  authUser?supabaseClient.from('muted_users').select('muted_user_id').eq('user_id',viewerId).limit(500):Promise.resolve({data:[],error:null}),
+  authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId).limit(100):Promise.resolve({data:[],error:null})
  ]);
  for(const r of [bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR])if(r.error)throw r.error;
  const conversationIds=[...new Set((membershipsR.data||[]).map(x=>x.conversation_id))];
@@ -317,14 +318,14 @@ async function refreshAppData(){
   if(membersR.error)throw membersR.error;
   if(messagesR.error)throw messagesR.error;
   const grouped={};
-  for(const m of messagesR.data||[]){(grouped[m.conversation_id]??=[]).push({from:m.sender_id===viewerId?'me':m.sender_id,text:m.body,at:m.created_at,id:m.id})}
+  for(const m of [...(messagesR.data||[])].reverse()){(grouped[m.conversation_id]??=[]).push({from:m.sender_id===viewerId?'me':m.sender_id,text:m.body,at:m.created_at,id:m.id})}
   messages=conversationIds.map(cid=>{const member=(membersR.data||[]).find(x=>x.conversation_id===cid&&x.user_id!==viewerId);return member?{id:cid,userId:member.user_id,messages:grouped[cid]||[]}:null}).filter(Boolean);
  }
  const old=state||{};
  state={
   users:profiles,
   posts:postRows.map(p=>mapPost(p,profiles,likes,reposts,bookmarksR.data||[],pollVotesR.data||[],viewerId)),
-  following:follows.filter(f=>f.follower_id===viewerId).map(f=>f.following_id),
+  following:follows.map(f=>f.following_id),
   followRecords:follows,
   notifications:(notificationsR.data||[]).map(n=>({id:n.id,type:n.type,from:n.actor_id||'demo-me',text:n.body,at:n.created_at,postId:n.post_id,detail:'',read:!!n.read_at})),
   readNotifications:(notificationsR.data||[]).filter(n=>n.read_at).map(n=>n.id),
@@ -336,7 +337,7 @@ async function refreshAppData(){
   searchFilter:old.searchFilter||'posts',searchTerm:old.searchTerm||'',
   selectedChat:old.selectedChat||messages[0]?.id||'',draft:'',history:old.history||[],
   profileId:old.profileId||null,postId:old.postId||null,hiddenTrends:[],
-  authUser,authProfileId:authUser?.id||null
+  authUser,authProfileId:authUser?.id||null,hasMorePosts:postRows.length===200,postCursor:postRows.length?postRows[postRows.length-1].created_at:null,loadingMorePosts:false
  };
  render();
  $('#main').removeAttribute('aria-busy');
@@ -601,14 +602,17 @@ function editPost(id){
  if(!p||p.userId!==state.authProfileId){toast('このポストを編集する権限がありません。');return}
  openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>ポストを編集</h2></div><div class="form-modal-body"><label class="field"><span>本文</span><textarea id="edit-post-body" maxlength="280">${esc(p.text)}</textarea></label><div class="modal-footer"><small id="edit-post-count">${p.text.length}/280</small><button class="primary" data-action="save-post-edit" data-id="${esc(p.id)}">保存</button></div></div>`,{label:'ポストを編集'});
 }
-function openProfileModal(kind,profileId){
+async function openProfileModal(kind,profileId){
  const target=profileId||me().id;
- const ids=kind==='following'
-  ? state.followRecords.filter(x=>x.follower_id===target).map(x=>x.following_id)
-  : state.followRecords.filter(x=>x.following_id===target).map(x=>x.follower_id);
- const list=ids.map(id=>user(id)).filter(Boolean);
- const rows=list.map(u=>'<div class="suggestion">'+avatar(u,'sm')+'<div class="suggestion-info"><strong>'+esc(u.name)+'</strong><small>@'+esc(u.handle)+'</small></div>'+(u.id===me().id?'':'<button class="follow-btn '+(isFollowing(u.id)?'following':'')+'" data-action="follow" data-id="'+esc(u.id)+'">'+(isFollowing(u.id)?'フォロー中':'フォロー')+'</button>')+'</div>').join('');
- openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>'+(kind==='following'?'フォロー中':'フォロワー')+'</h2></div><div class="people-list">'+(rows||'<div class="empty"><p>アカウントはありません。</p></div>')+'</div>',{label:kind==='following'?'フォロー中':'フォロワー'});
+ const following=kind==='following';
+ try{
+  const result=await supabaseClient.from('follows').select('follower_id,following_id').eq(following?'follower_id':'following_id',target).limit(200);
+  if(result.error)throw result.error;
+  const ids=(result.data||[]).map(x=>following?x.following_id:x.follower_id);
+  const list=ids.map(id=>user(id)).filter(Boolean);
+  const rows=list.map(u=>'<div class="suggestion">'+avatar(u,'sm')+'<div class="suggestion-info"><strong>'+esc(u.name)+'</strong><small>@'+esc(u.handle)+'</small></div>'+(u.id===me().id?'':'<button class="follow-btn '+(isFollowing(u.id)?'following':'')+'" data-action="follow" data-id="'+esc(u.id)+'">'+(isFollowing(u.id)?'フォロー中':'フォロー')+'</button>')+'</div>').join('');
+  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>'+(following?'フォロー中':'フォロワー')+'</h2></div><div class="people-list">'+(rows||'<div class="empty"><p>アカウントはありません。</p></div>')+'</div>',{label:following?'フォロー中':'フォロワー'});
+ }catch(error){toast(supaMessage(error))}
 }
 function showEngagement(id,type){const p=state.posts.find(x=>x.id===id);if(!p)return;openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>${type==='likes'?'いいね':'リポスト'}</h2></div><div class="page-intro"><p>${type==='likes'?short(p.likes)+'件のいいね':short(p.reposts)+'件のリポスト'}</p></div><div class="suggestion">${avatar(user(p.userId))}<div class="suggestion-info"><strong>${esc(user(p.userId).name)}</strong><small>@${esc(user(p.userId).handle)}</small></div></div>`,{label:type==='likes'?'いいね':'リポスト'})}
 
@@ -831,7 +835,7 @@ async function action(el,event){
  case'back-messages':$('.message-layout')?.classList.remove('show-chat');break;
  case'back':goBack();break;
  case'trend-menu':state.hiddenTrends.push(val);render();break;
- case'show-followers':openProfileModal(el.dataset.type,id);break;
+ case'show-followers':await openProfileModal(el.dataset.type,id);break;
  case'show-post-engagement':showEngagement(id,el.dataset.type);break;
  case'views':{
   const p=state.posts.find(x=>x.id===id);
