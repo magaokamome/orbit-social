@@ -293,7 +293,7 @@ async function refreshAppData(){
   supabaseClient.from('lists').select('id,owner_id,name,description,is_public,created_at').order('created_at',{ascending:false}).limit(100),
   supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank').limit(50)
  ]);
- for(const r of [profilesR,postsR,followsR,likesR,repostsR,listsR,trendsR])if(r.error)throw r.error;
+ for(const r of [profilesR,postsR,followsR,listsR,trendsR])if(r.error)throw r.error;
  const profiles=(profilesR.data||[]).map(mapProfile);
  const follows=followsR.data||[],postRows=postsR.data||[],postIds=postRows.map(p=>p.id);
  const pollPostIds=postRows.filter(p=>Array.isArray(p.poll_options)&&p.poll_options.length).map(p=>p.id);
