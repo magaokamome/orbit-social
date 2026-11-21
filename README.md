@@ -11,7 +11,7 @@ https://magaokamome.github.io/orbit-social/
 - フロントエンド: GitHub Pages（静的HTML / CSS / JavaScript）
 - データベース: Supabase PostgreSQL
 - 認証: Supabase Auth（メールアドレス / パスワード）
-- リアルタイム: Supabase Realtime（投稿、フォロー、リアクション、通知、DM、リスト）
+- リアルタイム: Supabase Realtime（投稿、フォロー、いいね、リポスト、通知、DM）
 - 画像アップロード: 無効（画像ファイルはSupabase Storageへ保存しません）
 
 ## Supabase
