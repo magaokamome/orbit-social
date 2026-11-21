@@ -260,6 +260,8 @@ let authUser=null;
 let realtimeChannel=null;
 let authListenerRegistered=false;
 let composeState=null;
+let modalScrollY=0;
+let modalBodyStyle=null;
 const avatarColors=['#657786','#8b6bb1','#d97757','#397f9d','#8a9b61','#c17a9c','#647f9b','#ba8b3e','#5b978b'];
 function mapProfile(row){
  const name=row.display_name||row.username||'Lime2';
@@ -542,8 +544,34 @@ function openPost(id){
  if(state.authUser)supabaseClient.rpc('increment_post_view',{target_post_id:id}).then(({error})=>{if(error)console.warn(error)});
 }
 
-function openModal(html,options={}){const root=$('#modal-root');root.innerHTML=`<div class="modal-backdrop" data-action="close-backdrop"><section class="modal ${options.className||''}" role="dialog" aria-modal="true" aria-label="${esc(options.label||'ダイアログ')}">${html}</section></div>`;const focusTarget=$('textarea',root)||$('input',root);if(focusTarget)requestAnimationFrame(()=>focusTarget.focus())}
-function closeModal(){composeState=null;$('#modal-root').innerHTML='';}
+function lockModalScroll(){
+ if(document.body.classList.contains('modal-open'))return;
+ modalScrollY=window.scrollY||window.pageYOffset||0;
+ modalBodyStyle={position:document.body.style.position,top:document.body.style.top,left:document.body.style.left,width:document.body.style.width,overflow:document.body.style.overflow,htmlOverflow:document.documentElement.style.overflow};
+ document.body.classList.add('modal-open');
+ document.documentElement.style.overflow='hidden';
+ document.body.style.position='fixed';
+ document.body.style.top=`-${modalScrollY}px`;
+ document.body.style.left='0';
+ document.body.style.width='100%';
+ document.body.style.overflow='hidden';
+}
+function unlockModalScroll(){
+ if(!document.body.classList.contains('modal-open'))return;
+ document.body.classList.remove('modal-open');
+ if(modalBodyStyle){
+  document.body.style.position=modalBodyStyle.position;
+  document.body.style.top=modalBodyStyle.top;
+  document.body.style.left=modalBodyStyle.left;
+  document.body.style.width=modalBodyStyle.width;
+  document.body.style.overflow=modalBodyStyle.overflow;
+  document.documentElement.style.overflow=modalBodyStyle.htmlOverflow;
+ }
+ modalBodyStyle=null;
+ window.scrollTo(0,modalScrollY);
+}
+function openModal(html,options={}){lockModalScroll();const root=$('#modal-root');root.innerHTML=`<div class="modal-backdrop" data-action="close-backdrop"><section class="modal ${options.className||''}" role="dialog" aria-modal="true" aria-label="${esc(options.label||'ダイアログ')}">${html}</section></div>`;const focusTarget=$('textarea',root)||$('input',root);if(focusTarget)requestAnimationFrame(()=>focusTarget.focus())}
+function closeModal(){composeState=null;$('#modal-root').innerHTML='';unlockModalScroll();}
 function updateComposeCount(){const t=$('#modal-text');if(t){$('#modal-count').textContent=t.value.length+'/280';const button=$('[data-action="submit-compose"]');if(button)button.disabled=!t.value.trim()&&!composeState?.media.length&&!composeState?.gif&&!composeState?.poll;}}
 function composeModal(replyId=null,feature=null){if(!requireAuth())return;const target=replyId?state.posts.find(p=>p.id===replyId):null;composeState={replyId:target?.id||null,text:state.draft||'',media:[],gif:'',poll:null,warning:'',location:'',schedule:'',permission:'everyone'};const permissions=[['everyone','全員が返信できます'],['following','フォローしているアカウント'],['mentioned','@ポストしたアカウントのみ']];const tools=[['gif','gif','GIF画像を追加'],['poll','poll','投票を追加'],['emoji','smile','絵文字を追加'],['schedule','calendar','ポストを予約'],['location','pin','位置情報を追加'],['warning','warning','コンテンツの警告']];openModal(`<div class="modal-head compose-modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>ポストする</h2></div><div class="modal-compose"><div class="compose-avatar">${avatar(me())}</div><div class="compose-main">${target?`<div class="replying-to">返信先: <button data-action="profile-open" data-id="${target.userId}">@${esc(user(target.userId).handle)}</button></div>`:''}<textarea id="modal-text" maxlength="280" placeholder="いまどうしてる？" aria-label="ポスト本文">${esc(composeState.text)}</textarea><div id="compose-extras"></div><div class="compose-permission-wrap"><button class="compose-permission" data-action="toggle-permissions">${ico('globe')} <span>全員が返信できます</span> ${ico('back')}</button><div class="permission-menu hidden" id="permission-menu">${permissions.map(([value,label])=>`<button data-action="set-permission" data-value="${value}"><span>${esc(label)}</span>${value==='everyone'?'<small>誰でも返信できます</small>':value==='following'?'<small>フォロー中のアカウントが返信できます</small>':'<small>メンションした相手だけが返信できます</small>'}</button>`).join('')}</div></div><div class="modal-footer"><div class="compose-toolbar">${tools.map(([action,icon,label])=>`<button class="tool-btn" data-action="compose-tool" data-tool="${action}" title="${label}" aria-label="${label}">${ico(icon)}</button>`).join('')}</div><div class="compose-submit"><small id="modal-count">${composeState.text.length}/280</small><button class="primary" data-action="submit-compose" data-reply="${target?.id||''}" ${composeState.text.trim()?'':'disabled'}>${target?'返信':'ポストする'}</button></div></div></div></div>`,{className:'compose-modal',label:target?'返信':'ポストする'});if(feature)composeTool(feature);updateComposeCount()}
 function composeTool(tool){if(!composeState)return;const extras=$('#compose-extras');if(!extras)return;if(tool==='gif'){extras.innerHTML=`<div class="compose-tool-panel"><strong>GIFを選択</strong><div class="gif-choices">${['👏 拍手','😂 笑い','🎉 お祝い','🐱 ねこ'].map(v=>`<button data-action="select-gif" data-value="${v}">${v}</button>`).join('')}</div></div>`;return}if(tool==='poll'){composeState.poll=composeState.poll||['',''];extras.innerHTML=`<div class="compose-tool-panel poll-editor"><label><input data-poll-option="0" maxlength="25" placeholder="選択肢1" value="${esc(composeState.poll[0])}"></label><label><input data-poll-option="1" maxlength="25" placeholder="選択肢2" value="${esc(composeState.poll[1])}"></label><button data-action="add-poll-option">選択肢を追加</button><select id="poll-duration"><option value="1日">1日</option><option value="3日">3日</option><option value="7日">7日</option></select></div>`;updateComposeCount();return}if(tool==='emoji'){extras.innerHTML=`<div class="emoji-picker">${['😀','😊','😂','🥹','❤️','✨','🎉','☕','🌱','👍','🙌','🐈'].map(v=>`<button data-action="insert-emoji" data-value="${v}">${v}</button>`).join('')}</div>`;return}if(tool==='schedule'){extras.innerHTML=`<div class="compose-tool-panel"><label>予約日時 <input type="datetime-local" id="schedule-at" min="${new Date(Date.now()+60000).toISOString().slice(0,16)}"></label></div>`;return}if(tool==='location'){composeState.location=composeState.location?'':'';extras.innerHTML=`<div class="compose-tool-panel"><label>位置情報 <input id="location-value" maxlength="40" placeholder="例：東京都渋谷区"></label><button data-action="save-location">設定</button></div>`;return}if(tool==='warning'){extras.innerHTML=`<div class="compose-tool-panel"><label>コンテンツの警告 <input id="warning-value" maxlength="60" placeholder="例：ネタバレを含みます"></label><button data-action="save-warning">設定</button></div>`;return}}
@@ -562,7 +590,17 @@ async function addPost(text,replyTo=null,extras={}){
   toast(extras.schedule?'ポストを予約しました':replyTo?'返信しました':'ポストしました');return true;
  }catch(error){toast(supaMessage(error));return false}
 }
-function openPostMenu(id){const p=state.posts.find(x=>x.id===id);if(!p)return;openModal(`<div class="post-menu-list"><button data-action="close-modal" class="menu-close">${ico('close')}<span>閉じる</span></button><button data-action="share" data-id="${id}">${ico('share')}<span>ポストを共有</span></button>${p.userId===me().id?`<button class="danger" data-action="delete-post" data-id="${id}">${ico('close')}<span>ポストを削除</span></button>`:`<button data-action="report-post" data-id="${id}">${ico('warning')}<span>ポストを報告</span></button><button data-action="mute-user" data-id="${p.userId}">${ico('bell')}<span>@${esc(user(p.userId).handle)}をミュート</span></button>`}</div>`,{className:'menu-modal',label:'ポストメニュー'})}
+function openPostMenu(id){
+ const p=state.posts.find(x=>x.id===id);if(!p)return;
+ const own=p.userId===me().id;
+ openModal(`<div class="post-menu-list"><button data-action="close-modal" class="menu-close">${ico('close')}<span>閉じる</span></button><button data-action="share" data-id="${esc(id)}">${ico('share')}<span>ポストを共有</span></button>${own?`<button data-action="edit-post" data-id="${esc(id)}">${ico('settings')}<span>ポストを編集</span></button><button class="danger" data-action="delete-post" data-id="${esc(id)}">${ico('close')}<span>ポストを削除</span></button>`:`<button data-action="report-post" data-id="${esc(id)}">${ico('warning')}<span>ポストを報告</span></button><button data-action="mute-user" data-id="${esc(p.userId)}">${ico('bell')}<span>@${esc(user(p.userId).handle)}をミュート</span></button>`}</div>`,{className:'menu-modal',label:'ポストメニュー'});
+}
+function editPost(id){
+ if(!requireAuth())return;
+ const p=state.posts.find(x=>x.id===id);
+ if(!p||p.userId!==state.authProfileId){toast('このポストを編集する権限がありません。');return}
+ openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>ポストを編集</h2></div><div class="form-modal-body"><label class="field"><span>本文</span><textarea id="edit-post-body" maxlength="280">${esc(p.text)}</textarea></label><div class="modal-footer"><small id="edit-post-count">${p.text.length}/280</small><button class="primary" data-action="save-post-edit" data-id="${esc(p.id)}">保存</button></div></div>`,{label:'ポストを編集'});
+}
 function openProfileModal(kind,profileId){
  const target=profileId||me().id;
  const ids=kind==='following'
@@ -646,6 +684,7 @@ async function action(el,event){
  case'open-post':openPost(id);break;
  case'profile-open':state.history.push({view:state.view,postId:state.postId,profileId:state.profileId});state.view='profile';state.profileId=id;state.profileTab='posts';render();window.scrollTo(0,0);break;
  case'post-menu':openPostMenu(id);break;
+  case'edit-post':editPost(id);break;
  case'share':{
   const link=location.href.split('#')[0]+'#post-'+id;
   if(navigator.clipboard?.writeText)navigator.clipboard.writeText(link).then(()=>toast('リンクをコピーしました')).catch(()=>toast(link));
@@ -776,7 +815,17 @@ async function action(el,event){
   if(result.error){toast(result.error.code==='23505'?'投票済みです。':supaMessage(result.error));break}
   await refreshAppData();break;
  }
- case'delete-post':{
+ case'save-post-edit':{
+   if(!requireAuth())break;
+   const post=state.posts.find(x=>x.id===id);
+   if(!post||post.userId!==state.authProfileId){toast('このポストを編集する権限がありません。');break}
+   const body=$('#edit-post-body')?.value.trim()||'';
+   if(!body&&!post.gif&&!post.poll){toast('ポスト本文を入力してください');break}
+   const result=await supabaseClient.from('posts').update({body,updated_at:new Date().toISOString()}).eq('id',id).eq('author_id',state.authProfileId).select('id').single();
+   if(result.error){toast(supaMessage(result.error));break}
+   closeModal();await refreshAppData();toast('ポストを更新しました');break;
+  }
+  case'delete-post':{
   if(!requireAuth())break;
   if(!confirm('このポストを削除しますか？'))break;
   const result=await supabaseClient.from('posts').delete().eq('id',id);
@@ -830,7 +879,7 @@ function isDescendant(post,id){let current=post;let steps=0;while(current?.reply
 function updateDetailCount(){const t=$('#detail-reply');if(t){$('#detail-reply-count').textContent=t.value.length+'/280';const b=$('[data-action="submit-detail-reply"]');if(b)b.disabled=!t.value.trim()}}
 // Event delegation: one listener for the whole app keeps dynamically rendered controls active.
 document.addEventListener('click',event=>{const nav=event.target.closest('[data-nav]');if(nav){event.preventDefault();navigate(nav.dataset.nav,nav.dataset.nav==='profile'?{profileId:me().id}:{});return}const trend=event.target.closest('[data-trend]');if(trend){event.preventDefault();doSearch(trend.dataset.trend);return}const el=event.target.closest('[data-action]');if(el){event.preventDefault();action(el,event);return}const card=event.target.closest('[data-post]');if(card&&!event.target.closest('button,a,textarea,input'))openPost(card.dataset.post)});
-document.addEventListener('input',event=>{const t=event.target;if(t.id==='quick-compose'){state.draft=t.value;const b=$('#quick-post');if(b)b.disabled=!t.value.trim();save()}if(t.id==='modal-text'){if(composeState)composeState.text=t.value;updateComposeCount()}if(t.id==='search-input'){state.searchTerm=t.value;const results=$('#search-results');if(results)results.innerHTML=searchResults()}if(t.id==='detail-reply')updateDetailCount();if(t.dataset.pollOption!==undefined&&composeState)composeState.poll[Number(t.dataset.pollOption)]=t.value});
+document.addEventListener('input',event=>{const t=event.target;if(t.id==='quick-compose'){state.draft=t.value;const b=$('#quick-post');if(b)b.disabled=!t.value.trim();save()}if(t.id==='modal-text'){if(composeState)composeState.text=t.value;updateComposeCount()}if(t.id==='search-input'){state.searchTerm=t.value;const results=$('#search-results');if(results)results.innerHTML=searchResults()}if(t.id==='detail-reply')updateDetailCount();if(t.id==='edit-post-body'){const count=$('#edit-post-count');if(count)count.textContent=t.value.length+'/280'}if(t.dataset.pollOption!==undefined&&composeState)composeState.poll[Number(t.dataset.pollOption)]=t.value});
 document.addEventListener('change',event=>{if(event.target.id==='schedule-at'&&composeState)composeState.schedule=event.target.value});
 document.addEventListener('keydown',event=>{if(event.target.id==='global-search'&&event.key==='Enter'){event.preventDefault();doSearch(event.target.value);return}if(event.key==='Escape')closeModal();if((event.metaKey||event.ctrlKey)&&event.key==='Enter'){if($('#modal-text'))$('[data-action="submit-compose"]')?.click();else if($('#detail-reply'))$('[data-action="submit-detail-reply"]')?.click()}if(event.key==='/'&&!['INPUT','TEXTAREA'].includes(document.activeElement.tagName)){event.preventDefault();$('#global-search')?.focus()}});
 document.addEventListener('submit',event=>{if(event.target.id==='auth-form'){handleAuthSubmit(event);return}if(event.target.id==='chat-form'){event.preventDefault();const input=$('#chat-input'),text=input?.value.trim();if(!text)return;input.value='';sendMessage(text)}});
