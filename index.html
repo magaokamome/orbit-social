@@ -436,22 +436,23 @@ const short=n=>n>=1000000?(n/1000000).toFixed(1).replace(/\.0$/,'')+'M':n>=10000
 const timeAgo=v=>{const d=Math.max(0,Math.floor((Date.now()-new Date(v).getTime())/60000));return d<1?'たった今':d<60?d+'分':d<1440?Math.floor(d/60)+'時間':Math.floor(d/1440)+'日'};
 const fullDate=v=>new Intl.DateTimeFormat('ja-JP',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(v));
 const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeImageUrl=(value='')=>{const raw=String(value||'').trim();if(!raw)return '';try{const url=new URL(raw,location.href);if(url.protocol!=='https:'&&!(url.protocol==='http:'&&url.origin===location.origin))return '';if(url.username||url.password)return '';return url.href}catch{return ''}};
 const rich=s=>esc(s).replace(/(#[\p{L}\p{N}_]+)/gu,'<span class="tag">$1</span>').replace(/(https?:\/\/[^\s]+)/g,'<span class="tag">$1</span>').replace(/(@[a-zA-Z0-9_]+)/g,'<span class="tag">$1</span>');
-const avatar=(u,size='')=>`<span class="avatar ${size}" style="background:${esc(u.color||'#8298aa')}">${u.avatar_url?`<img src="${esc(u.avatar_url)}" alt="">`:esc(u.initial||u.name?.slice(0,1)||'?')}</span>`;
+const avatar=(u,size='')=>{const imageUrl=safeImageUrl(u.avatar_url);return `<span class="avatar ${size}" style="background:${esc(u.color||'#8298aa')}">${imageUrl?`<img src="${esc(imageUrl)}" alt="">`:esc(u.initial||u.name?.slice(0,1)||'?')}</span>`};
 const navItems=[['home','ホーム','home'],['explore','話題を検索','search'],['notifications','通知','bell'],['messages','メッセージ','mail'],['bookmarks','ブックマーク','bookmark'],['lists','リスト','list'],['profile','プロフィール','user'],['settings','設定','settings']];
 function toast(message){const root=$('#toast-root');root.innerHTML=`<div class="toast" role="status">${esc(message)}</div>`;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>root.innerHTML='',2400)}
 function renderNav(){
  const active=state.view;
  $('#side-nav').innerHTML=navItems.map(([id,label,icon])=>`<button class="nav-item ${active===id?'active':''}" data-nav="${esc(id)}" aria-label="${label}">${ico(icon)}<span class="nav-label">${label}</span>${id==='notifications'&&state.notifications.filter(n=>!state.readNotifications.includes(n.id)).length?`<span class="count">${Math.min(99,state.notifications.filter(n=>!state.readNotifications.includes(n.id)).length)}</span>`:''}</button>`).join('');
  $('#mobile-nav').innerHTML=navItems.filter(x=>['home','explore','notifications','messages','profile'].includes(x[0])).map(([id,label,icon])=>`<button class="${active===id?'active':''}" data-nav="${esc(id)}" aria-label="${label}" title="${label}">${ico(icon)}</button>`).join('');
- $('#side-avatar').innerHTML=me().avatar_url?`<img src="${esc(me().avatar_url)}" alt="">`:esc(me().initial);
+ const sideAvatarUrl=safeImageUrl(me().avatar_url);$('#side-avatar').innerHTML=sideAvatarUrl?`<img src="${esc(sideAvatarUrl)}" alt="">`:esc(me().initial);
  $('#side-avatar').style.background=me().color;
  $('#side-name').textContent=state.authUser?me().name:'ログイン';
  $('#side-handle').textContent=state.authUser?'@'+me().handle:'閲覧モード';
 }
 function header(title,back=false){return `<header class="topbar">${back?`<button class="back" data-action="back" aria-label="戻る">${ico('back')}</button>`:''}<h1>${esc(title)}</h1></header>`}
 function postActions(p){return `<div class="post-actions"><button class="action" data-action="reply" data-id="${esc(p.id)}" aria-label="返信 ${p.replies||0}" title="返信">${ico('reply')}<span>${p.replies?short(p.replies):''}</span></button><button class="action repost ${p.reposted?'active':''}" data-action="repost" data-id="${esc(p.id)}" aria-label="リポスト ${p.reposts||0}" aria-pressed="${!!p.reposted}" title="リポスト">${ico('repost')}<span>${p.reposts?short(p.reposts):''}</span></button><button class="action like ${p.liked?'active':''}" data-action="like" data-id="${esc(p.id)}" aria-label="いいね ${p.likes||0}" aria-pressed="${!!p.liked}" title="いいね">${ico('heart')}<span>${p.likes?short(p.likes):''}</span></button><button class="action view-action" data-action="views" data-id="${esc(p.id)}" aria-label="表示回数 ${p.views||0}" title="表示回数">${ico('chart')}<span>${short(p.views||0)}</span></button><button class="action bookmarked ${p.bookmarked?'active':''}" data-action="bookmark" data-id="${esc(p.id)}" aria-label="ブックマーク" aria-pressed="${!!p.bookmarked}" title="ブックマーク">${ico('bookmark')}</button><button class="action" data-action="share" data-id="${esc(p.id)}" aria-label="共有" title="共有">${ico('share')}</button></div>`}
-function postMedia(p){const media=p.mediaItems?.length?p.mediaItems:(p.media?[p.media]:[]);let html='';if(p.warning)html+=`<div class="content-warning">${esc(p.warning)}</div>`;if(media.length)html+=`<div class="post-media-grid count-${Math.min(media.length,4)}">${media.slice(0,4).map(src=>`<img class="post-media" src="${esc(src)}" alt="投稿画像" loading="lazy" data-action="open-image" data-src="${esc(src)}" onerror="this.style.display='none'">`).join('')}</div>`;if(p.gif)html+=`<div class="gif-preview"><span>GIF</span><strong>${esc(p.gif)}</strong><small>デモ用GIF</small></div>`;if(p.poll)html+=`<div class="poll-card">${p.poll.options.map((option,i)=>{const total=p.poll.votes.reduce((a,b)=>a+b,0);const pct=total?Math.round((p.poll.votes[i]||0)/total*100):0;return `<button class="poll-option ${p.poll.voted===i?'selected':''}" data-action="vote-poll" data-id="${esc(p.id)}" data-option="${i}"><span class="poll-bar" style="width:${p.poll.voted===null||p.poll.voted===undefined?0:pct}%"></span><span>${esc(option)}</span>${p.poll.voted!==null&&p.poll.voted!==undefined?`<b>${pct}%</b>`:''}</button>`}).join('')}<small>${p.poll.votes.reduce((a,b)=>a+b,0)}票 · 残り${esc(p.poll.duration||'1日')}</small></div>`;if(p.location)html+=`<div class="post-location">${ico('pin')} ${esc(p.location)}</div>`;return html}
+function postMedia(p){const media=p.mediaItems?.length?p.mediaItems:(p.media?[p.media]:[]);let html='';if(p.warning)html+=`<div class="content-warning">${esc(p.warning)}</div>`;const safeMedia=media.slice(0,4).map(safeImageUrl).filter(Boolean);if(safeMedia.length)html+=`<div class="post-media-grid count-${Math.min(safeMedia.length,4)}">${safeMedia.map(src=>`<img class="post-media" src="${esc(src)}" alt="投稿画像" loading="lazy" data-action="open-image" data-src="${esc(src)}" onerror="this.style.display='none'">`).join('')}</div>`;if(p.gif)html+=`<div class="gif-preview"><span>GIF</span><strong>${esc(p.gif)}</strong><small>デモ用GIF</small></div>`;if(p.poll)html+=`<div class="poll-card">${p.poll.options.map((option,i)=>{const total=p.poll.votes.reduce((a,b)=>a+b,0);const pct=total?Math.round((p.poll.votes[i]||0)/total*100):0;return `<button class="poll-option ${p.poll.voted===i?'selected':''}" data-action="vote-poll" data-id="${esc(p.id)}" data-option="${i}"><span class="poll-bar" style="width:${p.poll.voted===null||p.poll.voted===undefined?0:pct}%"></span><span>${esc(option)}</span>${p.poll.voted!==null&&p.poll.voted!==undefined?`<b>${pct}%</b>`:''}</button>`}).join('')}<small>${p.poll.votes.reduce((a,b)=>a+b,0)}票 · 残り${esc(p.poll.duration||'1日')}</small></div>`;if(p.location)html+=`<div class="post-location">${ico('pin')} ${esc(p.location)}</div>`;return html}
 function postHTML(p,options={}){
  const u=user(p.userId);const context=p.repostedBy?`<div class="post-context">${ico('repost')}<span>${esc(user(p.repostedBy).name)}さんがリポスト</span></div>`:'';
  const replyContext=p.replyTo?`<div class="post-context reply-context">返信先: <button data-action="open-post" data-id="${esc(p.replyTo)}">@${esc(user(state.posts.find(x=>x.id===p.replyTo)?.userId).handle)}</button></div>`:'';
@@ -496,7 +497,7 @@ function renderLists(){
  + state.lists.map(l=>'<button class="list-row" data-action="open-list" data-id="'+esc(l.id)+'">'+ico('list')+'<span class="list-info"><strong>'+esc(l.name)+'</strong><small>'+esc(l.description)+' · '+l.members.length+'人</small></span>'+ico('back')+'</button>').join('');
 }
 function renderProfile(id){
- const u=user(id),own=id===me().id,canEdit=own&&!!state.authUser;
+ const u=user(id),own=id===me().id,canEdit=own&&!!state.authUser,coverUrl=safeImageUrl(u.cover_url);
  let posts=state.posts.filter(p=>p.userId===id&&!p.replyTo);
  if(state.profileTab==='likes')posts=state.posts.filter(p=>p.liked);
  if(state.profileTab==='media')posts=posts.filter(p=>p.media||p.mediaItems?.length);
@@ -507,7 +508,7 @@ function renderProfile(id){
    ? '<button class="follow-btn" data-action="auth-modal">ログイン</button>'
    : '<button class="follow-btn '+(isFollowing(id)?'following':'')+'" data-action="follow" data-id="'+esc(id)+'">'+(isFollowing(id)?'フォロー中':'フォロー')+'</button><button class="icon-btn" data-action="message-user" data-id="'+esc(id)+'" aria-label="メッセージ">'+ico('mail')+'</button>';
  return header(u.name,!own)
- + '<div class="profile-cover">'+(u.cover_url?'<img src="'+esc(u.cover_url)+'" alt="">':'')+'</div>'
+ + '<div class="profile-cover">'+(coverUrl?'<img src="'+esc(coverUrl)+'" alt="">':'')+'</div>'
  + '<div class="profile-top"><div class="profile-row">'+avatar(u,'lg')+'<div class="profile-actions">'+actions+'</div></div>'
  + '<div class="profile-name">'+esc(u.name)+' '+(u.verified?'<span class="verified">✓</span>':'')+'</div>'
  + '<div class="profile-handle">@'+esc(u.handle)+'</div><div class="profile-bio">'+esc(u.bio)+'</div>'
@@ -953,7 +954,7 @@ async function action(el,event){
  case'auth-modal':openAuthModal('signin');break;
  case'auth-switch':closeModal();openAuthModal(val);break;
  case'sign-out':await signOut();break;
- case'open-image':openModal('<div class="image-viewer"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><img src="'+esc(el.dataset.src)+'" alt="投稿画像"></div>',{className:'image-modal',label:'画像を表示'});break;
+ case'open-image':{const imageUrl=safeImageUrl(el.dataset.src);if(!imageUrl)break;openModal('<div class="image-viewer"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><img src="'+esc(imageUrl)+'" alt="投稿画像"></div>',{className:'image-modal',label:'画像を表示'});break;}
  case'reset':if(confirm('ページを再読み込みしますか？'))location.reload();break;
  }
 }
