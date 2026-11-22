@@ -306,7 +306,7 @@ async function refreshAppData(){
   (listsR.data||[]).length?supabaseClient.from('list_members').select('list_id,user_id').in('list_id',(listsR.data||[]).map(x=>x.id)).limit(1000):Promise.resolve({data:[],error:null}),
   pollPostIds.length?supabaseClient.from('poll_votes').select('post_id,user_id,option_index').in('post_id',pollPostIds).limit(5000):Promise.resolve({data:[],error:null}),
   authUser?supabaseClient.from('muted_users').select('muted_user_id').eq('user_id',viewerId).limit(500):Promise.resolve({data:[],error:null}),
-  authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId).limit(100):Promise.resolve({data:[],error:null})
+  authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId).order('joined_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null})
  ]);
  for(const r of [likesR,repostsR,bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR])if(r.error)throw r.error;
  const likes=likesR.data||[],reposts=repostsR.data||[];
@@ -756,7 +756,7 @@ function doSearch(q){state.searchTerm=q||'';state.view='explore';state.searchFil
 async function makeConversation(id){
  if(!requireAuth()||!id||id===state.authProfileId)return;
  try{
-  const mine=await supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',state.authProfileId);
+  const mine=await supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',state.authProfileId).order('joined_at',{ascending:false}).limit(100);
   if(mine.error)throw mine.error;
   const ids=(mine.data||[]).map(x=>x.conversation_id);let conversationId=null;
   if(ids.length){
