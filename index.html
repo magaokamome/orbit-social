@@ -673,8 +673,9 @@ async function addPost(text,replyTo=null,extras={}){
      const followResult=await supabaseClient.from('follows').select('follower_id').eq('follower_id',parent.userId).eq('following_id',state.authProfileId).limit(1);
      if(followResult.error)throw followResult.error;
      if(!(followResult.data||[]).length){toast('このポストは投稿者がフォローしているアカウントのみ返信できます。');return false}
-    }else if(parent.replyPermission==='mentioned'&&!((parent.text||'').toLowerCase().includes('@'+me().handle.toLowerCase()))){
-     toast('このポストはメンションされたアカウントのみ返信できます。');return false;
+    }else if(parent.replyPermission==='mentioned'){
+     const mentions=(parent.text||'').toLowerCase().match(/(^|[^a-z0-9_])@([a-z0-9_-]+)/g)||[];
+     if(!mentions.some(mention=>mention.slice(mention.lastIndexOf('@')+1)===me().handle.toLowerCase())){toast('このポストはメンションされたアカウントのみ返信できます。');return false}
     }
    }
   }
