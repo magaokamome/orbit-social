@@ -289,7 +289,7 @@ async function refreshAppData(){
  const viewerId=authUser?.id||'demo-me';
  const [profilesR,postsR,followsR,listsR,trendsR]=await Promise.all([
   supabaseClient.from('profiles').select('id,username,display_name,bio,location,website,created_at,followers_count,following_count,is_verified,avatar_url,cover_url').order('created_at').limit(1000),
-  supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).order('created_at',{ascending:false}).limit(200),
+  supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200),
   supabaseClient.from('follows').select('follower_id,following_id').eq('follower_id',viewerId).limit(2000),
   supabaseClient.from('lists').select('id,owner_id,name,description,is_public,created_at').order('created_at',{ascending:false}).limit(100),
   supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank').limit(50)
@@ -339,7 +339,7 @@ async function refreshAppData(){
   searchFilter:old.searchFilter||'posts',searchTerm:old.searchTerm||'',
   selectedChat:old.selectedChat||messages[0]?.id||'',draft:'',history:old.history||[],
   profileId:old.profileId||null,postId:old.postId||null,profileLikedPosts:old.authProfileId===(authUser?.id||null)?old.profileLikedPosts||[]:[],profileLikesFor:old.authProfileId===(authUser?.id||null)?old.profileLikesFor||null:null,profileLikesLoading:false,hiddenTrends:[],
-  authUser,authProfileId:authUser?.id||null,hasMorePosts:postRows.length===200,postCursor:postRows.length?postRows[postRows.length-1].created_at:null,loadingMorePosts:false
+  authUser,authProfileId:authUser?.id||null,hasMorePosts:postRows.length===200,postCursor:postRows.length?{createdAt:postRows[postRows.length-1].created_at,id:postRows[postRows.length-1].id}:null,loadingMorePosts:false
  };
  const activeProfileId=state.profileId||me().id;
  const needsProfileLikes=state.view==='profile'&&state.profileTab==='likes'&&state.profileLikesFor!==activeProfileId;
@@ -383,7 +383,7 @@ async function loadMorePosts(){
  const button=$('[data-action="load-more-posts"]');
  if(button){button.disabled=true;button.textContent='読み込み中…'}
  try{
-  const result=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).lt('created_at',cursor).order('created_at',{ascending:false}).limit(200);
+  const result=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200);
   if(result.error)throw result.error;
   const rows=result.data||[];
   if(state.postCursor!==cursor||state.authProfileId!==authProfileId)return;
@@ -399,7 +399,7 @@ async function loadMorePosts(){
   const existing=new Set(state.posts.map(p=>p.id));
   const mapped=rows.filter(p=>!existing.has(p.id)).map(p=>mapPost(p,state.users,likesR.data||[],repostsR.data||[],bookmarksR.data||[],pollVotesR.data||[],viewerId));
   state.posts=[...state.posts,...mapped];
-  state.postCursor=rows[rows.length-1].created_at;
+  state.postCursor={createdAt:rows[rows.length-1].created_at,id:rows[rows.length-1].id};
   state.hasMorePosts=rows.length===200;
  }catch(error){toast(supaMessage(error))}
  finally{
