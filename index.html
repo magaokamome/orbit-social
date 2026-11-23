@@ -282,8 +282,11 @@ function supaMessage(error){
  if(error.code==='42501'||error.code==='PGRST301')return 'この操作を行う権限がありません。ログイン状態を確認してください。';
  return error.message||'Supabaseの処理に失敗しました。';
 }
+let refreshRequest=0;
 async function refreshAppData(){
+ const request=++refreshRequest;
  const sessionResult=await supabaseClient.auth.getSession();
+ if(request!==refreshRequest)return;
  if(sessionResult.error)throw sessionResult.error;
  authUser=sessionResult.data.session?.user||null;
  const viewerId=authUser?.id||'demo-me';
@@ -294,6 +297,7 @@ async function refreshAppData(){
   supabaseClient.from('lists').select('id,owner_id,name,description,is_public,created_at').order('created_at',{ascending:false}).limit(100),
   supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank').limit(50)
  ]);
+ if(request!==refreshRequest)return;
  for(const r of [profilesR,postsR,followsR,listsR,trendsR])if(r.error)throw r.error;
  const profiles=(profilesR.data||[]).map(mapProfile);
  const follows=followsR.data||[],postRows=postsR.data||[],postIds=postRows.map(p=>p.id);
@@ -308,6 +312,7 @@ async function refreshAppData(){
   authUser?supabaseClient.from('muted_users').select('muted_user_id').eq('user_id',viewerId).limit(500):Promise.resolve({data:[],error:null}),
   authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId).order('joined_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null})
  ]);
+ if(request!==refreshRequest)return;
  for(const r of [likesR,repostsR,bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR])if(r.error)throw r.error;
  const likes=likesR.data||[],reposts=repostsR.data||[];
  const conversationIds=[...new Set((membershipsR.data||[]).map(x=>x.conversation_id))];
@@ -317,6 +322,7 @@ async function refreshAppData(){
    supabaseClient.from('conversation_members').select('conversation_id,user_id').in('conversation_id',conversationIds).limit(200),
    supabaseClient.from('messages').select('id,conversation_id,sender_id,body,created_at').in('conversation_id',conversationIds).order('created_at',{ascending:false}).limit(500)
   ]);
+  if(request!==refreshRequest)return;
   if(membersR.error)throw membersR.error;
   if(messagesR.error)throw messagesR.error;
   const grouped={};
