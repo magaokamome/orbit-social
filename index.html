@@ -203,7 +203,48 @@
 .crawl-card .show-more{display:block}
 .mobile-nav a{color:var(--text);text-decoration:none;width:20%;height:100%;display:grid;place-items:center;font-size:24px}
 .mobile-nav a:hover{color:var(--blue)}
-.legal-page{padding:20px 22px 44px}.legal-page>h2{font-size:23px;margin:0 0 5px}.legal-updated{color:var(--muted);font-size:12px;margin:0 0 20px}.legal-page section{padding:15px 0;border-bottom:1px solid var(--border)}.legal-page section h3{font-size:16px;margin:0 0 7px}.legal-page section p{margin:0;line-height:1.75;color:#26333b}.legal-links{margin-top:22px}.legal-links a{color:var(--blue);text-decoration:none}.legal-links a:hover{text-decoration:underline}</style>
+.legal-page{padding:20px 22px 44px}.legal-page>h2{font-size:23px;margin:0 0 5px}.legal-updated{color:var(--muted);font-size:12px;margin:0 0 20px}.legal-page section{padding:15px 0;border-bottom:1px solid var(--border)}.legal-page section h3{font-size:16px;margin:0 0 7px}.legal-page section p{margin:0;line-height:1.75;color:#26333b}.legal-links{margin-top:22px}.legal-links a{color:var(--blue);text-decoration:none}.legal-links a:hover{text-decoration:underline}
+/* Weekly visual maintenance: responsive grid and interaction clarity */
+.action{min-width:44px;min-height:36px;justify-content:center;transition:color .15s ease,background-color .15s ease}
+.action:hover{background:rgba(29,155,240,.08)}
+.action.like:hover{color:var(--pink);background:rgba(249,24,128,.08)}
+.action.repost:hover{color:var(--green);background:rgba(0,186,124,.09)}
+.action.bookmarked:hover{color:var(--blue);background:rgba(29,155,240,.08)}
+.nav-item,.suggestion,.trend,.notification,.list-row,.thread-item{transition:background-color .14s ease,color .14s ease}
+.searchbox:focus-within{box-shadow:0 0 0 1px rgba(29,155,240,.10)}
+.right-card{border-radius:18px}
+.right-card h2{line-height:1.25;letter-spacing:-.2px}
+.modal-backdrop{align-items:center;padding:max(24px,5vh) 12px;overscroll-behavior:contain}
+.modal{max-height:90vh;overflow-y:auto;overscroll-behavior:contain}
+.compose-modal{max-height:90vh}
+.image-modal{max-height:none;overflow:visible}
+.nav-item:focus-visible,.action:focus-visible,.icon-btn:focus-visible,.tool-btn:focus-visible{outline-offset:3px}
+@media(min-width:1121px) and (max-width:1299px){
+ .app{grid-template-columns:minmax(220px,260px) minmax(0,1fr) minmax(250px,320px);gap:20px;padding:0 16px;width:100%}
+ .center,.right{min-width:0}
+ .center{max-width:640px;justify-self:center;width:100%}
+}
+@media(min-width:861px) and (max-width:1120px){
+ .app{grid-template-columns:78px minmax(0,1fr) minmax(220px,280px);gap:16px;padding:0 12px;width:100%}
+ .center,.right{min-width:0}
+ .center{max-width:640px;justify-self:center;width:100%}
+ .right{overflow-x:hidden}
+}
+@media(min-width:601px) and (max-width:860px){
+ .app{grid-template-columns:64px minmax(0,1fr);width:100%;max-width:700px;padding:0 12px}
+ .center{min-width:0}
+}
+@media(max-width:600px){
+ .app{width:100%}
+ .topbar{background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}
+ .center{padding-bottom:calc(58px + env(safe-area-inset-bottom))}
+ .mobile-nav{height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+ .mobile-compose{bottom:calc(72px + env(safe-area-inset-bottom))}
+ .modal-backdrop{align-items:stretch;padding:0}
+ .modal{max-height:100%;overflow-y:auto}
+ .image-modal{max-height:none;overflow:visible}
+}
+</style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Lime2","url":"https://magaokamome.github.io/orbit-social/","description":"日々の出来事や興味のあることを共有し、人とつながるソーシャルネットワーク。","inLanguage":"ja","publisher":{"@type":"Organization","name":"Lime2"}}</script>
 </head>
 <body>
