@@ -760,8 +760,10 @@ async function makeConversation(id){
   if(mine.error)throw mine.error;
   const ids=(mine.data||[]).map(x=>x.conversation_id);let conversationId=null;
   if(ids.length){
-   const other=await supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',id).in('conversation_id',ids).limit(1);
-   if(other.error)throw other.error;conversationId=other.data?.[0]?.conversation_id||null;
+   const other=await supabaseClient.from('conversation_members').select('conversation_id,joined_at').eq('user_id',id).in('conversation_id',ids).order('joined_at',{ascending:false}).limit(100);
+   if(other.error)throw other.error;
+   const sharedIds=new Set(ids);
+   conversationId=(other.data||[]).find(row=>sharedIds.has(row.conversation_id))?.conversation_id||null;
   }
   if(!conversationId){
    const made=await supabaseClient.from('conversations').insert({created_by:state.authProfileId}).select().single();
