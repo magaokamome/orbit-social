@@ -326,7 +326,7 @@ function mapPost(row,profiles,likes,reposts,bookmarks,votes,viewerId){
  const media=Array.isArray(row.media_urls)?row.media_urls:[];
  const pv=votes.filter(v=>v.post_id===row.id);
  const pollOptions=Array.isArray(row.poll_options)?row.poll_options:null;
- const poll=pollOptions?{options:pollOptions,votes:pollOptions.map((_,i)=>pv.filter(v=>v.option_index===i).length),voted:pv.find(v=>v.user_id===viewerId)?.option_index??null,duration:row.poll_duration||'1日'}:null;
+ const poll=pollOptions?{options:pollOptions,votes:pollOptions.map((_,i)=>Number(pv.find(v=>v.option_index===i)?.vote_count||0)),voted:pv.find(v=>v.viewer_option_index!==null&&v.viewer_option_index!==undefined)?.viewer_option_index??null,duration:row.poll_duration||'1日'}:null;
  return {id:row.id,userId:row.author_id,text:row.body||'',createdAt:row.created_at,likes:row.likes_count||0,reposts:row.reposts_count||0,replies:row.replies_count||0,views:row.views_count||0,liked:likes.some(x=>x.post_id===row.id&&x.user_id===viewerId),reposted:reposts.some(x=>x.post_id===row.id&&x.user_id===viewerId),bookmarked:bookmarks.some(x=>x.post_id===row.id),media:media[0]||'',mediaItems:media,gif:row.gif_label||'',poll,warning:row.warning||'',location:row.location||'',replyPermission:row.reply_permission||'everyone',replyTo:row.reply_to||null};
 }
 function supaMessage(error){
@@ -361,7 +361,7 @@ async function refreshAppData(){
   authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId).limit(500):Promise.resolve({data:[],error:null}),
   authUser?supabaseClient.from('notifications').select('id,actor_id,type,body,created_at,post_id,read_at').order('created_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null}),
   (listsR.data||[]).length?supabaseClient.from('list_members').select('list_id,user_id').in('list_id',(listsR.data||[]).map(x=>x.id)).limit(1000):Promise.resolve({data:[],error:null}),
-  pollPostIds.length?supabaseClient.from('poll_votes').select('post_id,user_id,option_index').in('post_id',pollPostIds).limit(5000):Promise.resolve({data:[],error:null}),
+  pollPostIds.length?supabaseClient.rpc('get_poll_results',{p_post_ids:pollPostIds}):Promise.resolve({data:[],error:null}),
   authUser?supabaseClient.from('muted_users').select('muted_user_id').eq('user_id',viewerId).limit(500):Promise.resolve({data:[],error:null}),
   authUser?supabaseClient.from('conversation_members').select('conversation_id').eq('user_id',viewerId).order('joined_at',{ascending:false}).limit(100):Promise.resolve({data:[],error:null})
  ]);
@@ -424,7 +424,7 @@ async function loadProfileLikes(profileId){
    supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).in('post_id',postIds),
    supabaseClient.from('reposts').select('user_id,post_id').eq('user_id',viewerId).in('post_id',postIds),
    state.authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId).in('post_id',postIds):Promise.resolve({data:[],error:null}),
-   pollIds.length?supabaseClient.from('poll_votes').select('post_id,user_id,option_index').in('post_id',pollIds).limit(5000):Promise.resolve({data:[],error:null})
+   pollIds.length?supabaseClient.rpc('get_poll_results',{p_post_ids:pollIds}):Promise.resolve({data:[],error:null})
   ]);
   for(const result of [likesR,repostsR,bookmarksR,pollVotesR])if(result.error)throw result.error;
   if(request!==profileLikesRequest||state.view!=='profile'||(state.profileId||me().id)!==profileId||state.profileTab!=='likes')return;
@@ -452,7 +452,7 @@ async function loadMorePosts(){
    supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).in('post_id',ids),
    supabaseClient.from('reposts').select('user_id,post_id').eq('user_id',viewerId).in('post_id',ids),
    state.authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId).in('post_id',ids):Promise.resolve({data:[],error:null}),
-   pollIds.length?supabaseClient.from('poll_votes').select('post_id,user_id,option_index').in('post_id',pollIds).limit(5000):Promise.resolve({data:[],error:null})
+   pollIds.length?supabaseClient.rpc('get_poll_results',{p_post_ids:pollIds}):Promise.resolve({data:[],error:null})
   ]);
   for(const r of [likesR,repostsR,bookmarksR,pollVotesR])if(r.error)throw r.error;
   const existing=new Set(state.posts.map(p=>p.id));
@@ -680,7 +680,7 @@ async function loadSharedPostFromHash(){
     supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).eq('post_id',id),
     supabaseClient.from('reposts').select('user_id,post_id').eq('user_id',viewerId).eq('post_id',id),
     state.authUser?supabaseClient.from('bookmarks').select('post_id').eq('user_id',viewerId).eq('post_id',id):Promise.resolve({data:[],error:null}),
-    pollIds.length?supabaseClient.from('poll_votes').select('post_id,user_id,option_index').eq('post_id',id).limit(5000):Promise.resolve({data:[],error:null})
+    pollIds.length?supabaseClient.rpc('get_poll_results',{p_post_ids:[id]}):Promise.resolve({data:[],error:null})
    ]);
    for(const result of [likesR,repostsR,bookmarksR,pollVotesR])if(result.error)throw result.error;
    state.posts=[mapPost(row,state.users,likesR.data||[],repostsR.data||[],bookmarksR.data||[],pollVotesR.data||[],viewerId),...state.posts];
