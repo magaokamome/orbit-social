@@ -589,7 +589,9 @@ function renderBookmarks(){
 function renderLists(){
  const canManage=!!state.authUser;
  return header('リスト')+'<div class="page-intro"><h2>リスト</h2><p>興味のあるアカウントをテーマごとに整理できます。</p>'+(canManage?'<button class="primary" style="margin-top:12px" data-action="create-list">新しいリスト</button>':'<button class="follow-btn" data-action="auth-modal">ログインしてリストを作成</button>')+'</div>'
- + state.lists.map(l=>'<button class="list-row" data-action="open-list" data-id="'+esc(l.id)+'">'+ico('list')+'<span class="list-info"><strong>'+esc(l.name)+'</strong><small>'+esc(l.description)+' · '+l.members.length+'人</small></span>'+ico('back')+'</button>').join('');
+ + (state.lists.length
+  ? state.lists.map(l=>'<button class="list-row" data-action="open-list" data-id="'+esc(l.id)+'">'+ico('list')+'<span class="list-info"><strong>'+esc(l.name)+'</strong><small>'+esc(l.description)+' · '+l.members.length+'人</small></span>'+ico('back')+'</button>').join('')
+  : '<div class="empty"><h2>リストはまだありません</h2><p>気になるアカウントをテーマごとに整理できます。</p></div>');
 }
 function renderProfile(id){
  const u=user(id),own=id===me().id,canEdit=own&&!!state.authUser,coverUrl=safeImageUrl(u.cover_url),websiteUrl=safeExternalUrl(u.website);
