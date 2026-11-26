@@ -348,6 +348,11 @@ function supaMessage(error){
  if(error.code==='42501'||error.code==='PGRST301')return 'この操作を行う権限がありません。ログイン状態を確認してください。';
  return error.message||'Supabaseの処理に失敗しました。';
 }
+function isPublishedPost(row,now=Date.now()){
+ if(!row?.scheduled_at)return true;
+ const scheduledAt=Date.parse(row.scheduled_at);
+ return Number.isFinite(scheduledAt)&&scheduledAt<=now;
+}
 let refreshRequest=0;
 async function refreshAppData(){
  const request=++refreshRequest;
@@ -366,7 +371,7 @@ async function refreshAppData(){
  if(request!==refreshRequest)return;
  for(const r of [profilesR,postsR,followsR,listsR,trendsR])if(r.error)throw r.error;
  const profiles=(profilesR.data||[]).map(mapProfile);
- const follows=followsR.data||[],postRows=postsR.data||[],postIds=postRows.map(p=>p.id);
+ const follows=followsR.data||[],allPostRows=postsR.data||[],postRows=allPostRows.filter(isPublishedPost),postIds=postRows.map(p=>p.id);
  const pollPostIds=postRows.filter(p=>Array.isArray(p.poll_options)&&p.poll_options.length).map(p=>p.id);
  const [likesR,repostsR,bookmarksR,notificationsR,listMembersR,pollVotesR,mutedR,membershipsR]=await Promise.all([
   postIds.length?supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).in('post_id',postIds):Promise.resolve({data:[],error:null}),
@@ -411,7 +416,7 @@ async function refreshAppData(){
   searchFilter:old.searchFilter||'posts',searchTerm:old.searchTerm||'',
   selectedChat:old.selectedChat||messages[0]?.id||'',draft:'',history:old.history||[],
   profileId:old.profileId||null,postId:old.postId||null,profileLikedPosts:old.authProfileId===(authUser?.id||null)?old.profileLikedPosts||[]:[],profileLikesFor:old.authProfileId===(authUser?.id||null)?old.profileLikesFor||null:null,profileLikesLoading:false,hiddenTrends:[],
-  authUser,authProfileId:authUser?.id||null,hasMorePosts:postRows.length===200,postCursor:postRows.length?{createdAt:postRows[postRows.length-1].created_at,id:postRows[postRows.length-1].id}:null,loadingMorePosts:false
+  authUser,authProfileId:authUser?.id||null,hasMorePosts:allPostRows.length===200,postCursor:allPostRows.length?{createdAt:allPostRows[allPostRows.length-1].created_at,id:allPostRows[allPostRows.length-1].id}:null,loadingMorePosts:false
  };
  const activeProfileId=state.profileId||me().id;
  const needsProfileLikes=state.view==='profile'&&state.profileTab==='likes'&&state.profileLikesFor!==activeProfileId;
@@ -430,7 +435,7 @@ async function loadProfileLikes(profileId){
   if(!ids.length){state.profileLikedPosts=[];state.profileLikesFor=profileId;state.profileLikesLoading=false;render();return}
   const postsR=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').in('id',ids).is('deleted_at',null);
   if(postsR.error)throw postsR.error;
-  const rows=postsR.data||[],orderedRows=ids.map(id=>rows.find(row=>row.id===id)).filter(Boolean);
+  const rows=(postsR.data||[]).filter(isPublishedPost),orderedRows=ids.map(id=>rows.find(row=>row.id===id)).filter(Boolean);
   if(!orderedRows.length){state.profileLikedPosts=[];state.profileLikesFor=profileId;state.profileLikesLoading=false;render();return}
   const postIds=orderedRows.map(row=>row.id),pollIds=orderedRows.filter(row=>Array.isArray(row.poll_options)&&row.poll_options.length).map(row=>row.id);
   const [likesR,repostsR,bookmarksR,pollVotesR]=await Promise.all([
@@ -457,9 +462,11 @@ async function loadMorePosts(){
  try{
   const result=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200);
   if(result.error)throw result.error;
-  const rows=result.data||[];
+  const allRows=result.data||[];
   if(state.postCursor!==cursor||state.authProfileId!==authProfileId)return;
-  if(!rows.length){state.hasMorePosts=false;return}
+  if(!allRows.length){state.hasMorePosts=false;return}
+  const rows=allRows.filter(isPublishedPost),nextCursor={createdAt:allRows[allRows.length-1].created_at,id:allRows[allRows.length-1].id};
+  if(!rows.length){state.postCursor=nextCursor;state.hasMorePosts=allRows.length===200;return}
   const ids=rows.map(p=>p.id),pollIds=rows.filter(p=>Array.isArray(p.poll_options)&&p.poll_options.length).map(p=>p.id);
   const [likesR,repostsR,bookmarksR,pollVotesR]=await Promise.all([
    supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).in('post_id',ids),
@@ -471,8 +478,8 @@ async function loadMorePosts(){
   const existing=new Set(state.posts.map(p=>p.id));
   const mapped=rows.filter(p=>!existing.has(p.id)).map(p=>mapPost(p,state.users,likesR.data||[],repostsR.data||[],bookmarksR.data||[],pollVotesR.data||[],viewerId));
   state.posts=[...state.posts,...mapped];
-  state.postCursor={createdAt:rows[rows.length-1].created_at,id:rows[rows.length-1].id};
-  state.hasMorePosts=rows.length===200;
+  state.postCursor=nextCursor;
+  state.hasMorePosts=allRows.length===200;
  }catch(error){toast(supaMessage(error))}
  finally{
   if(state){state.loadingMorePosts=false;render();window.scrollTo(0,scrollY)}
@@ -497,7 +504,14 @@ async function loadAppData(){
    .subscribe();
  }
 }
-let refreshTimer=null;
+function showLoadError(error){
+  console.error('Lime2 data loading failed:',error);
+  const main=$('#main');
+  main.removeAttribute('aria-busy');
+  main.innerHTML=`${header('Lime2')}<div class="empty"><h2>データを読み込めませんでした</h2><p>通信状態を確認して、もう一度お試しください。</p><button class="primary" data-action="retry-load">再読み込み</button></div>`;
+  $('#right').innerHTML='';
+ }
+ let refreshTimer=null;
 function scheduleRefresh(){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>refreshAppData().catch(console.error),500)}
 const user=id=>state.users.find(u=>u.id===id)||state.users[0]||{id:'',name:'Lime2',handle:'lime2',bio:'',color:'#8298aa',initial:'O',followers:0,following:0};
 const me=()=>user(state?.authProfileId||'demo-me');
@@ -691,7 +705,9 @@ async function loadSharedPostFromHash(){
    const postR=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').eq('id',id).is('deleted_at',null).maybeSingle();
    if(postR.error)throw postR.error;
    if(!postR.data){toast('このポストは表示できません');return}
-   const row=postR.data,viewerId=state.authProfileId||'demo-me',pollIds=Array.isArray(row.poll_options)&&row.poll_options.length?[id]:[];
+   const row=postR.data;
+    if(!isPublishedPost(row)){toast('このポストはまだ公開されていません');return}
+    const viewerId=state.authProfileId||'demo-me',pollIds=Array.isArray(row.poll_options)&&row.poll_options.length?[id]:[];
    const [likesR,repostsR,bookmarksR,pollVotesR]=await Promise.all([
     supabaseClient.from('post_likes').select('user_id,post_id').eq('user_id',viewerId).eq('post_id',id),
     supabaseClient.from('reposts').select('user_id,post_id').eq('user_id',viewerId).eq('post_id',id),
@@ -1102,6 +1118,12 @@ async function action(el,event){
  case'auth-switch':closeModal({restoreFocus:false,preserveReturnFocus:true});openAuthModal(val);break;
  case'sign-out':await signOut();break;
  case'open-image':{const imageUrl=safeImageUrl(el.dataset.src);if(!imageUrl)break;openModal('<div class="image-viewer"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><img src="'+esc(imageUrl)+'" alt="投稿画像"></div>',{className:'image-modal',label:'画像を表示'});break;}
+ case'retry-load':{
+  $('#main').setAttribute('aria-busy','true');
+  try{await loadAppData();await loadSharedPostFromHash()}
+  catch(error){showLoadError(error)}
+  break;
+ }
  case'reset':if(confirm('ページを再読み込みしますか？'))location.reload();break;
  }
 }
@@ -1116,10 +1138,7 @@ document.addEventListener('submit',async event=>{if(event.target.id==='auth-form
 window.addEventListener('popstate',()=>{if(state?.view==='post')goBack()});
  window.addEventListener('hashchange',()=>{if(sharedPostIdFromHash())loadSharedPostFromHash();else if(state?.view==='post')goBack()});
 $('#main').setAttribute('aria-busy','true');
-loadAppData().then(()=>loadSharedPostFromHash()).catch(error=>{
- $('#main').removeAttribute('aria-busy');
- console.error('Lime2 data loading failed:',error);
-});
+loadAppData().then(()=>loadSharedPostFromHash()).catch(showLoadError);
 })();
 
 </script>
