@@ -268,6 +268,12 @@
  .composer-tools-small .tool-btn{width:40px;height:40px}
  .compose-submit .primary{min-height:40px}
 }
+
+/* Weekly accessibility and touch-target polish */
+.trend-more{width:40px;height:40px;padding:0;display:grid;place-items:center}
+.compose-toolbar .tool-btn,.composer-tools-small .tool-btn{width:40px;height:40px}
+.action{min-height:40px}
+.primary,.follow-btn{min-height:40px}
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Lime2","url":"https://magaokamome.github.io/orbit-social/","description":"日々の出来事や興味のあることを共有し、人とつながるソーシャルネットワーク。","inLanguage":"ja","publisher":{"@type":"Organization","name":"Lime2"}}</script>
 </head>
@@ -804,7 +810,7 @@ async function openProfileModal(kind,profileId){
   const ids=(result.data||[]).map(x=>following?x.following_id:x.follower_id);
   const list=ids.map(id=>user(id)).filter(Boolean);
   const rows=list.map(u=>'<div class="suggestion">'+avatar(u,'sm')+'<div class="suggestion-info"><strong>'+esc(u.name)+'</strong><small>@'+esc(u.handle)+'</small></div>'+(u.id===me().id?'':'<button class="follow-btn '+(isFollowing(u.id)?'following':'')+'" data-action="follow" data-id="'+esc(u.id)+'">'+(isFollowing(u.id)?'フォロー中':'フォロー')+'</button>')+'</div>').join('');
-  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>'+(following?'フォロー中':'フォロワー')+'</h2></div><div class="people-list">'+(rows||'<div class="empty"><p>アカウントはありません。</p></div>')+'</div>',{label:following?'フォロー中':'フォロワー'});
+  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>'+(following?'フォロー中':'フォロワー')+'</h2></div><div class="people-list">'+(rows||'<div class="empty"><p>アカウントはありません。</p></div>')+'</div>',{label:following?'フォロー中':'フォロワー'});
  }catch(error){toast(supaMessage(error))}
 }
 async function showEngagement(id,type){
@@ -815,7 +821,7 @@ async function showEngagement(id,type){
   if(result.error)throw result.error;
   const people=(result.data||[]).map(row=>state.users.find(u=>u.id===row.user_id)).filter(Boolean);
   const rows=people.map(u=>'<div class="suggestion">'+avatar(u,'sm')+'<div class="suggestion-info"><strong>'+esc(u.name)+'</strong><small>@'+esc(u.handle)+'</small></div></div>').join('');
-  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>'+title+'</h2></div><div class="page-intro"><p>'+people.length+'件</p></div>'+(rows||'<div class="empty"><p>まだ'+title+'はありません。</p></div>'),{label:title});
+  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>'+title+'</h2></div><div class="page-intro"><p>'+people.length+'件</p></div>'+(rows||'<div class="empty"><p>まだ'+title+'はありません。</p></div>'),{label:title});
  }catch(error){toast(supaMessage(error))}
 }
 
@@ -883,19 +889,19 @@ async function sendMessage(text){
  }catch(error){toast(supaMessage(error));return false}
 }
 
-function createList(){openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>新しいリスト</h2></div><div class="form-modal-body"><label class="field"><span>リスト名</span><input id="list-name" maxlength="40" placeholder="例：デザイン関連"></label><label class="field"><span>説明</span><textarea id="list-description" maxlength="160" placeholder="このリストについて"></textarea></label><button class="primary" data-action="save-list">作成する</button></div>`,{label:'新しいリスト'})}
+function createList(){openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>新しいリスト</h2></div><div class="form-modal-body"><label class="field"><span>リスト名</span><input id="list-name" maxlength="40" placeholder="例：デザイン関連"></label><label class="field"><span>説明</span><textarea id="list-description" maxlength="160" placeholder="このリストについて"></textarea></label><button class="primary" data-action="save-list">作成する</button></div>`,{label:'新しいリスト'})}
 function openList(id){
  const l=state.lists.find(x=>x.id===id);if(!l)return;
  const canManage=!!state.authUser&&l.ownerId===state.authProfileId;
- openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>${esc(l.name)}</h2>${canManage?`<span class="compose-spacer"></span><button class="icon-btn" data-action="edit-list" data-id="${esc(id)}" aria-label="リストを編集">${ico('settings')}</button><button class="icon-btn danger" data-action="delete-list" data-id="${esc(id)}" aria-label="リストを削除">${ico('close')}</button>`:''}</div><div class="page-intro"><p>${esc(l.description)}</p></div>${l.members.map(uid=>{const u=user(uid);return `<div class="suggestion">${avatar(u,'sm')}<div class="suggestion-info"><strong>${esc(u.name)}</strong><small>@${esc(u.handle)}</small></div>${canManage?`<button class="follow-btn following" data-action="remove-list-member" data-list="${esc(id)}" data-id="${esc(uid)}">削除</button>`:''}</div>`}).join('')}${canManage?`<div class="form-modal-body"><select id="list-member">${state.users.filter(u=>u.id!==me().id&&!l.members.includes(u.id)).map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join('')}</select><button class="primary" data-action="add-list-member" data-id="${esc(id)}">メンバーを追加</button></div>`:''}`,{label:l.name});
+ openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>${esc(l.name)}</h2>${canManage?`<span class="compose-spacer"></span><button class="icon-btn" data-action="edit-list" data-id="${esc(id)}" aria-label="リストを編集">${ico('settings')}</button><button class="icon-btn danger" data-action="delete-list" data-id="${esc(id)}" aria-label="リストを削除">${ico('close')}</button>`:''}</div><div class="page-intro"><p>${esc(l.description)}</p></div>${l.members.map(uid=>{const u=user(uid);return `<div class="suggestion">${avatar(u,'sm')}<div class="suggestion-info"><strong>${esc(u.name)}</strong><small>@${esc(u.handle)}</small></div>${canManage?`<button class="follow-btn following" data-action="remove-list-member" data-list="${esc(id)}" data-id="${esc(uid)}">削除</button>`:''}</div>`}).join('')}${canManage?`<div class="form-modal-body"><select id="list-member">${state.users.filter(u=>u.id!==me().id&&!l.members.includes(u.id)).map(u=>`<option value="${esc(u.id)}">${esc(u.name)}</option>`).join('')}</select><button class="primary" data-action="add-list-member" data-id="${esc(id)}">メンバーを追加</button></div>`:''}`,{label:l.name});
 }
 function editList(id){
  if(!requireAuth())return;
  const l=state.lists.find(x=>x.id===id);
  if(!l||l.ownerId!==state.authProfileId){toast('このリストを編集する権限がありません。');return}
- openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>リストを編集</h2></div><div class="form-modal-body"><label class="field"><span>リスト名</span><input id="edit-list-name" maxlength="40" value="${esc(l.name)}"></label><label class="field"><span>説明</span><textarea id="edit-list-description" maxlength="160">${esc(l.description)}</textarea></label><button class="primary" data-action="save-list-edit" data-id="${esc(id)}">保存</button></div>`,{label:'リストを編集'});
+ openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>リストを編集</h2></div><div class="form-modal-body"><label class="field"><span>リスト名</span><input id="edit-list-name" maxlength="40" value="${esc(l.name)}"></label><label class="field"><span>説明</span><textarea id="edit-list-description" maxlength="160">${esc(l.description)}</textarea></label><button class="primary" data-action="save-list-edit" data-id="${esc(id)}">保存</button></div>`,{label:'リストを編集'});
 }
-function editProfile(){if(!requireAuth())return;const u=me();openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal">${ico('close')}</button><h2>プロフィールを編集</h2><span class="compose-spacer"></span><button class="primary" data-action="save-profile">保存</button></div><div class="form-modal-body"><label class="field"><span>表示名</span><input id="edit-name" maxlength="50" value="${esc(u.name)}"></label><label class="field"><span>ユーザー名</span><input id="edit-handle" maxlength="27" value="${esc(u.handle)}"></label><label class="field"><span>自己紹介</span><textarea id="edit-bio" maxlength="160">${esc(u.bio)}</textarea></label><label class="field"><span>場所</span><input id="edit-location" maxlength="40" value="${esc(u.location)}"></label><label class="field"><span>ウェブサイト</span><input id="edit-website" maxlength="100" value="${esc(u.website)}"></label></div>`,{label:'プロフィールを編集'})}
+function editProfile(){if(!requireAuth())return;const u=me();openModal(`<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">${ico('close')}</button><h2>プロフィールを編集</h2><span class="compose-spacer"></span><button class="primary" data-action="save-profile">保存</button></div><div class="form-modal-body"><label class="field"><span>表示名</span><input id="edit-name" maxlength="50" value="${esc(u.name)}"></label><label class="field"><span>ユーザー名</span><input id="edit-handle" maxlength="27" value="${esc(u.handle)}"></label><label class="field"><span>自己紹介</span><textarea id="edit-bio" maxlength="160">${esc(u.bio)}</textarea></label><label class="field"><span>場所</span><input id="edit-location" maxlength="40" value="${esc(u.location)}"></label><label class="field"><span>ウェブサイト</span><input id="edit-website" maxlength="100" value="${esc(u.website)}"></label></div>`,{label:'プロフィールを編集'})}
 async function action(el,event){
  const a=el.dataset.action,id=el.dataset.id,val=el.dataset.value;
  switch(a){
@@ -1040,7 +1046,7 @@ async function action(el,event){
  case'new-message':{
   if(!requireAuth())break;
   const people=state.users.filter(u=>u.id!==me().id);
-  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>新しいメッセージ</h2></div><div class="people-list">'+people.map(u=>'<button class="suggestion" data-action="start-chat" data-id="'+esc(u.id)+'">'+avatar(u,'sm')+'<span class="suggestion-info"><strong>'+esc(u.name)+'</strong><small>@'+esc(u.handle)+'</small></span></button>').join('')+'</div>',{label:'新しいメッセージ'});
+  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>新しいメッセージ</h2></div><div class="people-list">'+people.map(u=>'<button class="suggestion" data-action="start-chat" data-id="'+esc(u.id)+'">'+avatar(u,'sm')+'<span class="suggestion-info"><strong>'+esc(u.name)+'</strong><small>@'+esc(u.handle)+'</small></span></button>').join('')+'</div>',{label:'新しいメッセージ'});
   break;
  }
  case'start-chat':closeModal();await makeConversation(id);break;
@@ -1052,7 +1058,7 @@ async function action(el,event){
  case'show-post-engagement':await showEngagement(id,el.dataset.type);break;
  case'views':{
   const p=state.posts.find(x=>x.id===id);
-  if(p)openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>ポストのアナリティクス</h2></div><div class="page-intro"><h2>'+short(p.views||0)+' 件の表示</h2><p>いいね '+short(p.likes||0)+' · リポスト '+short(p.reposts||0)+' · 返信 '+short(p.replies||0)+'</p></div>',{label:'ポストのアナリティクス'});
+  if(p)openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>ポストのアナリティクス</h2></div><div class="page-intro"><h2>'+short(p.views||0)+' 件の表示</h2><p>いいね '+short(p.likes||0)+' · リポスト '+short(p.reposts||0)+' · 返信 '+short(p.replies||0)+'</p></div>',{label:'ポストのアナリティクス'});
   break;
  }
  case'vote-poll':{
@@ -1083,7 +1089,7 @@ async function action(el,event){
  }
  case'report-post':{
   if(!requireAuth())break;
-  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>ポストを報告</h2></div><div class="form-modal-body"><label class="field"><span>報告理由</span><select id="report-reason"><option value="spam">スパム</option><option value="abuse">嫌がらせ・攻撃的な内容</option><option value="misinformation">誤情報</option><option value="sensitive">不適切なコンテンツ</option><option value="other">その他</option></select></label><label class="field"><span>詳細（任意）</span><textarea id="report-details" maxlength="500"></textarea></label><button class="primary" data-action="submit-report" data-id="'+esc(id)+'">報告を送信</button></div>',{label:'ポストを報告'});
+  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>ポストを報告</h2></div><div class="form-modal-body"><label class="field"><span>報告理由</span><select id="report-reason"><option value="spam">スパム</option><option value="abuse">嫌がらせ・攻撃的な内容</option><option value="misinformation">誤情報</option><option value="sensitive">不適切なコンテンツ</option><option value="other">その他</option></select></label><label class="field"><span>詳細（任意）</span><textarea id="report-details" maxlength="500"></textarea></label><button class="primary" data-action="submit-report" data-id="'+esc(id)+'">報告を送信</button></div>',{label:'ポストを報告'});
   break;
  }
  case'submit-report':{
@@ -1101,7 +1107,7 @@ async function action(el,event){
  }
  case'chat-menu':{
   const conversation=state.messages.find(x=>x.id===state.selectedChat);
-  if(conversation)openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>会話の設定</h2></div><div class="form-modal-body"><p>'+esc(user(conversation.userId).name)+'との会話</p><button class="follow-btn following" data-action="leave-conversation" data-id="'+esc(conversation.id)+'">会話を削除</button></div>',{label:'会話の設定'});
+  if(conversation)openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>会話の設定</h2></div><div class="form-modal-body"><p>'+esc(user(conversation.userId).name)+'との会話</p><button class="follow-btn following" data-action="leave-conversation" data-id="'+esc(conversation.id)+'">会話を削除</button></div>',{label:'会話の設定'});
   break;
  }
  case'leave-conversation':{
@@ -1112,7 +1118,7 @@ async function action(el,event){
  }
  case'account-menu':{
   if(!state.authUser){openAuthModal('signin');break}
-  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal">'+ico('close')+'</button><h2>アカウント</h2></div><div class="suggestion">'+avatar(me())+'<div class="suggestion-info"><strong>'+esc(me().name)+'</strong><small>@'+esc(me().handle)+'</small></div></div><div class="form-modal-body"><button class="nav-item" data-action="profile-open" data-id="'+esc(me().id)+'">'+ico('user')+'プロフィールを見る</button><button class="nav-item" data-action="edit-profile">'+ico('settings')+'プロフィールを編集</button><button class="follow-btn following" data-action="sign-out">ログアウト</button></div>',{label:'アカウント'});
+  openModal('<div class="modal-head"><button class="icon-btn" data-action="close-modal" aria-label="閉じる">'+ico('close')+'</button><h2>アカウント</h2></div><div class="suggestion">'+avatar(me())+'<div class="suggestion-info"><strong>'+esc(me().name)+'</strong><small>@'+esc(me().handle)+'</small></div></div><div class="form-modal-body"><button class="nav-item" data-action="profile-open" data-id="'+esc(me().id)+'">'+ico('user')+'プロフィールを見る</button><button class="nav-item" data-action="edit-profile">'+ico('settings')+'プロフィールを編集</button><button class="follow-btn following" data-action="sign-out">ログアウト</button></div>',{label:'アカウント'});
   break;
  }
  case'auth-modal':openAuthModal('signin');break;
