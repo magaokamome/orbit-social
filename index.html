@@ -274,6 +274,23 @@
 .compose-toolbar .tool-btn,.composer-tools-small .tool-btn{width:40px;height:40px}
 .action{min-height:40px}
 .primary,.follow-btn{min-height:40px}
+
+/* Keep keyboard focus visible in borderless form and composer controls. */
+.composer textarea:focus-visible,
+.chat-compose input:focus-visible,
+.field input:focus-visible,
+.field textarea:focus-visible,
+.reply-form textarea:focus-visible,
+.reply-composer-main textarea:focus-visible,
+.compose-main textarea:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.search-inline:focus-within {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+  background: #fff;
+}
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Lime2","url":"https://magaokamome.github.io/orbit-social/","description":"日々の出来事や興味のあることを共有し、人とつながるソーシャルネットワーク。","inLanguage":"ja","publisher":{"@type":"Organization","name":"Lime2"}}</script>
 </head>
@@ -291,7 +308,7 @@
 <button class="mobile-compose" data-action="open-compose" aria-label="投稿する"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
 <nav class="mobile-nav" id="mobile-nav" aria-label="モバイルナビゲーション"></nav>
 <div id="modal-root"></div><div id="toast-root" aria-live="polite"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2"></script>
 <script>
 (()=>{
 'use strict';
