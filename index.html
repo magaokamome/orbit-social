@@ -711,12 +711,13 @@ function renderLegalPage(page){
  return header(current.title,true)+'<article class="legal-page"><h2>'+current.title+'</h2><p class="legal-updated">最終更新日：2026年11月21日</p>'+current.sections.map(s=>'<section><h3>'+esc(s[0])+'</h3><p>'+esc(s[1])+'</p></section>').join('')+'<p class="legal-links"><a href="https://github.com/magaokamome/orbit-social/issues" target="_blank" rel="noopener">問い合わせ・改善要望（GitHub Issues）</a></p></article>';
 }
 function render(){renderNav();const view=state.view;document.body.dataset.view=view;let html=view==='home'?renderHome():view==='explore'?renderExplore():view==='notifications'?renderNotifications():view==='messages'?renderMessages():view==='bookmarks'?renderBookmarks():view==='lists'?renderLists():view==='profile'?renderProfile(state.profileId||me().id):view==='settings'?renderSettings():view==='post'?renderDetail():['terms','privacy','cookies','accessibility','about'].includes(view)?renderLegalPage(view):renderHome();$('#main').innerHTML=html;$('#right').innerHTML=renderRight();if(view==='messages')requestAnimationFrame(()=>{const b=$('#chat-body');if(b)b.scrollTop=b.scrollHeight});save()}
-function navigate(view,extra={}){if(view==='profile'&&state.profileId!==extra.profileId){profileLikesRequest++;state.profileLikedPosts=[];state.profileLikesFor=null;state.profileLikesLoading=false;}if(state.view!==view||(view==='profile'&&state.profileId!==extra.profileId)){state.history.push({view:state.view,postId:state.postId,profileId:state.profileId});}state.view=view;Object.assign(state,extra);render();window.scrollTo(0,0)}
-function goBack(){const previous=state.history.pop();if(previous){state.view=previous.view||'home';state.postId=previous.postId||null;state.profileId=previous.profileId||'me'}else{state.view='home';state.postId=null;state.profileId=me().id}render();window.scrollTo(0,0)}
+function rememberView(){state.history.push({view:state.view,postId:state.postId,profileId:state.profileId,scrollY:window.scrollY||window.pageYOffset||0})}
+function navigate(view,extra={}){if(view==='profile'&&state.profileId!==extra.profileId){profileLikesRequest++;state.profileLikedPosts=[];state.profileLikesFor=null;state.profileLikesLoading=false;}if(state.view!==view||(view==='profile'&&state.profileId!==extra.profileId)){rememberView();}state.view=view;Object.assign(state,extra);render();window.scrollTo(0,0)}
+function goBack(){const previous=state.history.pop();if(previous){state.view=previous.view||'home';state.postId=previous.postId||null;state.profileId=previous.profileId||'me'}else{state.view='home';state.postId=null;state.profileId=me().id}render();window.scrollTo(0,previous&&Number.isFinite(previous.scrollY)?Math.max(0,previous.scrollY):0)}
 
 function openPost(id){
  if(!state.posts.some(x=>x.id===id))return;
- if(state.view!=='post'||state.postId!==id)state.history.push({view:state.view,postId:state.postId,profileId:state.profileId});
+ if(state.view!=='post'||state.postId!==id)rememberView();
  state.postId=id;state.view='post';render();window.scrollTo(0,0);
  if(state.authUser)supabaseClient.rpc('increment_post_view',{target_post_id:id}).then(({error})=>{if(error)console.warn(error)});
 }
@@ -931,7 +932,7 @@ async function action(el,event){
  case'bookmark':await togglePost(id,'bookmarked');break;
  case'reply':composeModal(id);break;
  case'open-post':openPost(id);break;
- case'profile-open':profileLikesRequest++;state.profileLikedPosts=[];state.profileLikesFor=null;state.profileLikesLoading=false;state.history.push({view:state.view,postId:state.postId,profileId:state.profileId});state.view='profile';state.profileId=id;state.profileTab='posts';render();window.scrollTo(0,0);break;
+ case'profile-open':profileLikesRequest++;state.profileLikedPosts=[];state.profileLikesFor=null;state.profileLikesLoading=false;rememberView();state.view='profile';state.profileId=id;state.profileTab='posts';render();window.scrollTo(0,0);break;
  case'post-menu':openPostMenu(id);break;
   case'edit-post':editPost(id);break;
  case'share':{
@@ -948,7 +949,7 @@ async function action(el,event){
    if(result.error)toast(supaMessage(result.error));
    await refreshAppData();
    if(n.postId)openPost(n.postId);
-   else{state.history.push({view:state.view});state.view='profile';state.profileId=n.from;render()}
+   else{rememberView();state.view='profile';state.profileId=n.from;render()}
   }
   break;
  }
