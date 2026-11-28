@@ -92,6 +92,7 @@
 .poll-card{border:1px solid var(--border);padding:12px;border-radius:12px;margin:9px 0}
 .poll-option{display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;width:100%;padding:10px 12px;border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:999px;margin:7px 0;text-align:left;font-weight:650}
 .poll-option.selected{color:var(--text)}
+.poll-option:disabled{cursor:default;opacity:1}
 .poll-bar{position:absolute;inset:0 auto 0 0;background:#e8f5fd;z-index:0}
 .poll-option span:not(.poll-bar),.poll-option b{position:relative;z-index:1}
 .poll-card>small{display:block;color:var(--muted);font-size:12px;margin-top:8px}
@@ -360,11 +361,24 @@ function mapProfile(row){
  const color=avatarColors[Math.abs(String(row.id).split('').reduce((a,c)=>a+c.charCodeAt(0),0))%avatarColors.length];
  return {id:row.id,name,handle:row.username,bio:row.bio||'',location:row.location||'',website:row.website||'',joined:row.created_at?new Date(row.created_at).toLocaleDateString('ja-JP',{year:'numeric',month:'long'}):'',followers:row.followers_count||0,following:row.following_count||0,color,initial:name.slice(0,1),verified:!!row.is_verified,avatar_url:row.avatar_url||'',cover_url:row.cover_url||''};
 }
+function pollExpiry(row){
+ const durationMs=({'1日':86400000,'3日':259200000,'7日':604800000}[row.poll_duration]||86400000);
+ const startsAt=Date.parse(row.scheduled_at||row.created_at||'');
+ return Number.isFinite(startsAt)?new Date(startsAt+durationMs).toISOString():null;
+}
+function pollRemainingLabel(expiresAt){
+ const expiry=Date.parse(expiresAt||'');
+ if(!Number.isFinite(expiry)||expiry<=Date.now())return '投票終了';
+ const remaining=expiry-Date.now();
+ if(remaining>=86400000)return '残り'+Math.ceil(remaining/86400000)+'日';
+ if(remaining>=3600000)return '残り'+Math.ceil(remaining/3600000)+'時間';
+ return '残り1時間未満';
+}
 function mapPost(row,profiles,likes,reposts,bookmarks,votes,viewerId){
  const media=Array.isArray(row.media_urls)?row.media_urls:[];
  const pv=votes.filter(v=>v.post_id===row.id);
  const pollOptions=Array.isArray(row.poll_options)?row.poll_options:null;
- const poll=pollOptions?{options:pollOptions,votes:pollOptions.map((_,i)=>Number(pv.find(v=>v.option_index===i)?.vote_count||0)),voted:pv.find(v=>v.viewer_option_index!==null&&v.viewer_option_index!==undefined)?.viewer_option_index??null,duration:row.poll_duration||'1日'}:null;
+ const poll=pollOptions?{options:pollOptions,votes:pollOptions.map((_,i)=>Number(pv.find(v=>v.option_index===i)?.vote_count||0)),voted:pv.find(v=>v.viewer_option_index!==null&&v.viewer_option_index!==undefined)?.viewer_option_index??null,duration:row.poll_duration||'1日',expiresAt:pollExpiry(row)}:null;
  return {id:row.id,userId:row.author_id,text:row.body||'',createdAt:row.created_at,likes:row.likes_count||0,reposts:row.reposts_count||0,replies:row.replies_count||0,views:row.views_count||0,liked:likes.some(x=>x.post_id===row.id&&x.user_id===viewerId),reposted:reposts.some(x=>x.post_id===row.id&&x.user_id===viewerId),bookmarked:bookmarks.some(x=>x.post_id===row.id),media:media[0]||'',mediaItems:media,gif:row.gif_label||'',poll,warning:row.warning||'',location:row.location||'',replyPermission:row.reply_permission||'everyone',replyTo:row.reply_to||null};
 }
 function supaMessage(error){
@@ -439,8 +453,8 @@ async function refreshAppData(){
   mutedUsers:(mutedR.data||[]).map(x=>x.muted_user_id),
   view:old.view||'home',timeline:old.timeline||'for-you',notifFilter:old.notifFilter||'all',profileTab:old.profileTab||'posts',
   searchFilter:old.searchFilter||'posts',searchTerm:old.searchTerm||'',
-  selectedChat:old.selectedChat||messages[0]?.id||'',draft:'',history:old.history||[],
-  profileId:old.profileId||null,postId:old.postId||null,profileLikedPosts:old.authProfileId===(authUser?.id||null)?old.profileLikedPosts||[]:[],profileLikesFor:old.authProfileId===(authUser?.id||null)?old.profileLikesFor||null:null,profileLikesLoading:false,hiddenTrends:[],
+  selectedChat:old.selectedChat||messages[0]?.id||'',draft:old.draft||'',history:old.history||[],
+  profileId:old.profileId||null,postId:old.postId||null,profileLikedPosts:old.authProfileId===(authUser?.id||null)?old.profileLikedPosts||[]:[],profileLikesFor:old.authProfileId===(authUser?.id||null)?old.profileLikesFor||null:null,profileLikesLoading:false,hiddenTrends:old.hiddenTrends||[],
   authUser,authProfileId:authUser?.id||null,hasMorePosts:allPostRows.length===200,postCursor:allPostRows.length?{createdAt:allPostRows[allPostRows.length-1].created_at,id:allPostRows[allPostRows.length-1].id}:null,loadingMorePosts:false
  };
  const activeProfileId=state.profileId||me().id;
@@ -595,7 +609,7 @@ function renderNav(){
 }
 function header(title,back=false){return `<header class="topbar">${back?`<button class="back" data-action="back" aria-label="戻る">${ico('back')}</button>`:''}<h1>${esc(title)}</h1></header>`}
 function postActions(p){return `<div class="post-actions"><button class="action" data-action="reply" data-id="${esc(p.id)}" aria-label="返信 ${p.replies||0}" title="返信">${ico('reply')}<span>${p.replies?short(p.replies):''}</span></button><button class="action repost ${p.reposted?'active':''}" data-action="repost" data-id="${esc(p.id)}" aria-label="リポスト ${p.reposts||0}" aria-pressed="${!!p.reposted}" title="リポスト">${ico('repost')}<span>${p.reposts?short(p.reposts):''}</span></button><button class="action like ${p.liked?'active':''}" data-action="like" data-id="${esc(p.id)}" aria-label="いいね ${p.likes||0}" aria-pressed="${!!p.liked}" title="いいね">${ico('heart')}<span>${p.likes?short(p.likes):''}</span></button><button class="action view-action" data-action="views" data-id="${esc(p.id)}" aria-label="表示回数 ${p.views||0}" title="表示回数">${ico('chart')}<span>${short(p.views||0)}</span></button><button class="action bookmarked ${p.bookmarked?'active':''}" data-action="bookmark" data-id="${esc(p.id)}" aria-label="ブックマーク" aria-pressed="${!!p.bookmarked}" title="ブックマーク">${ico('bookmark')}</button><button class="action" data-action="share" data-id="${esc(p.id)}" aria-label="共有" title="共有">${ico('share')}</button></div>`}
-function postMedia(p){const media=p.mediaItems?.length?p.mediaItems:(p.media?[p.media]:[]);let html='';if(p.warning)html+=`<div class="content-warning">${esc(p.warning)}</div>`;const safeMedia=media.slice(0,4).map(safeImageUrl).filter(Boolean);if(safeMedia.length)html+=`<div class="post-media-grid count-${Math.min(safeMedia.length,4)}">${safeMedia.map(src=>`<img class="post-media" src="${esc(src)}" alt="投稿画像" loading="lazy" data-action="open-image" data-src="${esc(src)}" onerror="this.style.display='none'">`).join('')}</div>`;if(p.gif)html+=`<div class="gif-preview"><span>GIF</span><strong>${esc(p.gif)}</strong><small>デモ用GIF</small></div>`;if(p.poll)html+=`<div class="poll-card">${p.poll.options.map((option,i)=>{const total=p.poll.votes.reduce((a,b)=>a+b,0);const pct=total?Math.round((p.poll.votes[i]||0)/total*100):0;return `<button class="poll-option ${p.poll.voted===i?'selected':''}" data-action="vote-poll" data-id="${esc(p.id)}" data-option="${i}"><span class="poll-bar" style="width:${p.poll.voted===null||p.poll.voted===undefined?0:pct}%"></span><span>${esc(option)}</span>${p.poll.voted!==null&&p.poll.voted!==undefined?`<b>${pct}%</b>`:''}</button>`}).join('')}<small>${p.poll.votes.reduce((a,b)=>a+b,0)}票 · 残り${esc(p.poll.duration||'1日')}</small></div>`;if(p.location)html+=`<div class="post-location">${ico('pin')} ${esc(p.location)}</div>`;return html}
+function postMedia(p){const media=p.mediaItems?.length?p.mediaItems:(p.media?[p.media]:[]);let html='';if(p.warning)html+=`<div class="content-warning">${esc(p.warning)}</div>`;const safeMedia=media.slice(0,4).map(safeImageUrl).filter(Boolean);if(safeMedia.length)html+=`<div class="post-media-grid count-${Math.min(safeMedia.length,4)}">${safeMedia.map(src=>`<img class="post-media" src="${esc(src)}" alt="投稿画像" loading="lazy" data-action="open-image" data-src="${esc(src)}" onerror="this.style.display='none'">`).join('')}</div>`;if(p.gif)html+=`<div class="gif-preview"><span>GIF</span><strong>${esc(p.gif)}</strong><small>デモ用GIF</small></div>`;if(p.poll){const total=p.poll.votes.reduce((a,b)=>a+b,0),expired=!p.poll.expiresAt||Date.parse(p.poll.expiresAt)<=Date.now(),showResults=expired||(p.poll.voted!==null&&p.poll.voted!==undefined);html+=`<div class="poll-card">${p.poll.options.map((option,i)=>{const pct=total?Math.round((p.poll.votes[i]||0)/total*100):0;return `<button class="poll-option ${p.poll.voted===i?'selected':''}" data-action="vote-poll" data-id="${esc(p.id)}" data-option="${i}" ${expired?'disabled':''}><span class="poll-bar" style="width:${showResults?pct:0}%"></span><span>${esc(option)}</span>${showResults?`<b>${pct}%</b>`:''}</button>`}).join('')}<small>${total}票 · ${pollRemainingLabel(p.poll.expiresAt)}</small></div>`}if(p.location)html+=`<div class="post-location">${ico('pin')} ${esc(p.location)}</div>`;return html}
 function postHTML(p,options={}){
  const u=user(p.userId);const context=p.repostedBy?`<div class="post-context">${ico('repost')}<span>${esc(user(p.repostedBy).name)}さんがリポスト</span></div>`:'';
  const replyContext=p.replyTo?`<div class="post-context reply-context">返信先: <button data-action="open-post" data-id="${esc(p.replyTo)}">@${esc(user(state.posts.find(x=>x.id===p.replyTo)?.userId).handle)}</button></div>`:'';
@@ -1083,7 +1097,11 @@ async function action(el,event){
  }
  case'vote-poll':{
   if(!requireAuth())break;
+  const pollPost=state.posts.find(x=>x.id===id);
+  if(!pollPost?.poll){toast('この投票は利用できません。');break}
+  if(!pollPost.poll.expiresAt||Date.parse(pollPost.poll.expiresAt)<=Date.now()){toast('この投票は終了しました。');break}
   const option=Number(el.dataset.option);
+  if(!Number.isInteger(option)||option<0||option>=pollPost.poll.options.length){toast('選択肢が正しくありません。');break}
   const result=await supabaseClient.from('poll_votes').insert({post_id:id,user_id:state.authProfileId,option_index:option});
   if(result.error){toast(result.error.code==='23505'?'投票済みです。':supaMessage(result.error));break}
   await refreshAppData();break;
