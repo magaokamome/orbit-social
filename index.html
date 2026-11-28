@@ -291,6 +291,8 @@
   outline-offset: 2px;
   background: #fff;
 }
+
+.search-trend{border:0;background:transparent;color:var(--text);width:100%;text-align:left;font:inherit;cursor:pointer}
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Lime2","url":"https://magaokamome.github.io/orbit-social/","description":"日々の出来事や興味のあることを共有し、人とつながるソーシャルネットワーク。","inLanguage":"ja","publisher":{"@type":"Organization","name":"Lime2"}}</script>
 </head>
@@ -613,7 +615,7 @@ function renderRight(){
  + '<div class="footer"><a href="#terms" data-nav="terms">利用規約</a><a href="#privacy" data-nav="privacy">プライバシー</a><a href="#cookies" data-nav="cookies">Cookie</a><a href="#accessibility" data-nav="accessibility">アクセシビリティ</a><a href="#about" data-nav="about">Lime2について</a><br>© 2026 Lime2</div>';
 }
 function renderExplore(){return `${header('話題を検索')}<div class="search-page"><label class="search-inline">${ico('search')}<input id="search-input" value="${esc(state.searchTerm)}" placeholder="キーワードを検索"></label></div><div class="search-filters">${[['posts','投稿'],['people','ユーザー'],['trending','トレンド']].map(([id,t])=>`<button class="${state.searchFilter===id?'active':''}" data-action="search-filter" data-value="${esc(id)}">${t}</button>`).join('')}</div><div id="search-results">${searchResults()}</div>`}
-function searchResults(){const q=state.searchTerm.trim().toLowerCase();if(state.searchFilter==='trending')return state.trends.filter(t=>!state.hiddenTrends.includes(t[1])).map((t,i)=>`<div class="trend search-trend"><small>${esc(t[0])} · トレンド ${i+1}位</small><strong>${esc(t[1])}</strong><small>${esc(t[2])}</small></div>`).join('')||'<div class="empty"><h2>トレンドはありません</h2></div>';if(state.searchFilter==='people'){const users=state.users.filter(u=>!q||(u.name+' '+u.handle+' '+u.bio).toLowerCase().includes(q));return users.length?users.map(u=>`<div class="suggestion">${avatar(u)}<div class="suggestion-info"><strong>${esc(u.name)} ${u.verified?'<span class="verified">✓</span>':''}</strong><small>@${esc(u.handle)}</small><small>${esc(u.bio)}</small></div>${u.id===me().id?'':`<button class="follow-btn ${isFollowing(u.id)?'following':''}" data-action="follow" data-id="${esc(u.id)}">${isFollowing(u.id)?'フォロー中':'フォロー'}</button>`}</div>`).join(''):`<div class="empty"><h2>ユーザーが見つかりません</h2><p>別のキーワードをお試しください。</p></div>`}const list=state.posts.filter(p=>!p.replyTo&&(!q||(p.text+' '+user(p.userId).name+' '+user(p.userId).handle).toLowerCase().includes(q))).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));return feedPosts(list)+loadMorePostsButton()}
+function searchResults(){const q=state.searchTerm.trim().toLowerCase();if(state.searchFilter==='trending')return state.trends.filter(t=>!state.hiddenTrends.includes(t[1])).map((t,i)=>`<button type="button" class="trend search-trend" data-trend="${esc(t[1])}" aria-label="${esc(t[1])}で検索"><small>${esc(t[0])} · トレンド ${i+1}位</small><strong>${esc(t[1])}</strong><small>${esc(t[2])}</small></button>`).join('')||'<div class="empty"><h2>トレンドはありません</h2></div>';if(state.searchFilter==='people'){const users=state.users.filter(u=>!q||(u.name+' '+u.handle+' '+u.bio).toLowerCase().includes(q));return users.length?users.map(u=>`<div class="suggestion">${avatar(u)}<div class="suggestion-info"><strong>${esc(u.name)} ${u.verified?'<span class="verified">✓</span>':''}</strong><small>@${esc(u.handle)}</small><small>${esc(u.bio)}</small></div>${u.id===me().id?'':`<button class="follow-btn ${isFollowing(u.id)?'following':''}" data-action="follow" data-id="${esc(u.id)}">${isFollowing(u.id)?'フォロー中':'フォロー'}</button>`}</div>`).join(''):`<div class="empty"><h2>ユーザーが見つかりません</h2><p>別のキーワードをお試しください。</p></div>`}const list=state.posts.filter(p=>!p.replyTo&&(!q||(p.text+' '+user(p.userId).name+' '+user(p.userId).handle).toLowerCase().includes(q))).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));return feedPosts(list)+loadMorePostsButton()}
 function renderNotifications(){
  if(!state.authUser)return header('通知')+'<div class="empty"><h2>通知を見るにはログイン</h2><p>フォローやリアクションの通知が届きます。</p><button class="primary" data-action="auth-modal">ログイン / 新規登録</button></div>';
  const list=state.notifications.filter(n=>state.notifFilter==='all'||(state.notifFilter==='verified'?user(n.from).verified:(state.notifFilter==='mentions'&&(n.type==='reply'||n.type==='mention')))).sort((a,b)=>new Date(b.at)-new Date(a.at));
@@ -954,7 +956,7 @@ async function action(el,event){
   break;
  }
  case'notif-filter':state.notifFilter=val;render();break;
- case'search-filter':state.searchFilter=val;render();break;
+ case'search-filter':state.searchFilter=val;render();$('#search-input')?.focus();break;
  case'profile-tab':state.profileTab=val;if(val==='likes'){const targetId=state.profileId||me().id;state.profileLikedPosts=[];state.profileLikesFor=null;state.profileLikesLoading=true;render();await loadProfileLikes(targetId)}else{profileLikesRequest++;state.profileLikesLoading=false;render()}break;
  case'edit-profile':editProfile();break;
  case'close-modal':closeModal();break;
