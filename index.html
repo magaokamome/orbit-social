@@ -362,6 +362,8 @@ function mapProfile(row){
  return {id:row.id,name,handle:row.username,bio:row.bio||'',location:row.location||'',website:row.website||'',joined:row.created_at?new Date(row.created_at).toLocaleDateString('ja-JP',{year:'numeric',month:'long'}):'',followers:row.followers_count||0,following:row.following_count||0,color,initial:name.slice(0,1),verified:!!row.is_verified,avatar_url:row.avatar_url||'',cover_url:row.cover_url||''};
 }
 function pollExpiry(row){
+ const savedExpiry=Date.parse(row.poll_expires_at||'');
+ if(Number.isFinite(savedExpiry))return new Date(savedExpiry).toISOString();
  const durationMs=({'1日':86400000,'3日':259200000,'7日':604800000}[row.poll_duration]||86400000);
  const startsAt=Date.parse(row.scheduled_at||row.created_at||'');
  return Number.isFinite(startsAt)?new Date(startsAt+durationMs).toISOString():null;
@@ -402,7 +404,7 @@ async function refreshAppData(){
  const viewerId=authUser?.id||'demo-me';
  const [profilesR,postsR,followsR,listsR,trendsR]=await Promise.all([
   supabaseClient.from('profiles').select('id,username,display_name,bio,location,website,created_at,followers_count,following_count,is_verified,avatar_url,cover_url').order('created_at').limit(1000),
-  supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200),
+  supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,poll_expires_at,visibility').is('deleted_at',null).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200),
   supabaseClient.from('follows').select('follower_id,following_id').eq('follower_id',viewerId).limit(2000),
   supabaseClient.from('lists').select('id,owner_id,name,description,is_public,created_at').order('created_at',{ascending:false}).limit(100),
   supabaseClient.from('trends').select('category,keyword,post_count,rank').eq('is_active',true).order('rank').limit(50)
@@ -472,7 +474,7 @@ async function loadProfileLikes(profileId){
   const ids=[...new Set((likedR.data||[]).map(x=>x.post_id))];
   if(request!==profileLikesRequest||state.view!=='profile'||(state.profileId||me().id)!==profileId||state.profileTab!=='likes')return;
   if(!ids.length){state.profileLikedPosts=[];state.profileLikesFor=profileId;state.profileLikesLoading=false;render();return}
-  const postsR=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').in('id',ids).is('deleted_at',null);
+  const postsR=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,poll_expires_at,visibility').in('id',ids).is('deleted_at',null);
   if(postsR.error)throw postsR.error;
   const rows=(postsR.data||[]).filter(isPublishedPost),orderedRows=ids.map(id=>rows.find(row=>row.id===id)).filter(Boolean);
   if(!orderedRows.length){state.profileLikedPosts=[];state.profileLikesFor=profileId;state.profileLikesLoading=false;render();return}
@@ -499,7 +501,7 @@ async function loadMorePosts(){
  const button=$('[data-action="load-more-posts"]');
  if(button){button.disabled=true;button.textContent='読み込み中…'}
  try{
-  const result=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').is('deleted_at',null).or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200);
+  const result=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,poll_expires_at,visibility').is('deleted_at',null).or(`created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(200);
   if(result.error)throw result.error;
   const allRows=result.data||[];
   if(state.postCursor!==cursor||state.authProfileId!==authProfileId)return;
@@ -743,7 +745,7 @@ async function loadSharedPostFromHash(){
  const id=sharedPostIdFromHash();if(!id||!state)return;
  try{
   if(!state.posts.some(post=>post.id===id)){
-   const postR=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,visibility').eq('id',id).is('deleted_at',null).maybeSingle();
+   const postR=await supabaseClient.from('posts').select('id,author_id,body,created_at,likes_count,reposts_count,replies_count,views_count,media_urls,gif_label,poll_options,poll_duration,warning,location,reply_permission,reply_to,deleted_at,scheduled_at,poll_expires_at,visibility').eq('id',id).is('deleted_at',null).maybeSingle();
    if(postR.error)throw postR.error;
    if(!postR.data){toast('このポストは表示できません');return}
    const row=postR.data;
